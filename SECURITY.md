@@ -11,6 +11,9 @@ You'll get a reply within a few days. Full details: [docs/security.md](docs/secu
 - Security headers: `X-Frame-Options: DENY`, `nosniff`, HSTS, strict referrer policy, `Permissions-Policy`; `noindex` on private dashboards.
 - Data responses use `Cache-Control: no-store`.
 
+## Automated checks
+CodeQL, Gitleaks secret scanning, OpenSSF Scorecard, `npm audit` in CI, Dependabot and dependency review run on this repository. Results are public under the **Actions** and **Security** tabs.
+
 ## Known limits
 - Login lockout (5 tries / 15 min per IP) is in-memory, so it isn't shared across serverless instances. Use a strong `DASH_PASSWORD`.
 - A single shared dashboard login; no per-user accounts.

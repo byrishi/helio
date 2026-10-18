@@ -8,6 +8,14 @@
 
 A private, open-source dashboard for rooftop solar systems that report to ShineMonitor through an Eybond WiFi stick, the setup behind the SmartClient app.
 
+[![CI](https://github.com/byrishi/helio/actions/workflows/ci.yml/badge.svg)](https://github.com/byrishi/helio/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/byrishi/helio/actions/workflows/codeql.yml/badge.svg)](https://github.com/byrishi/helio/actions/workflows/codeql.yml)
+[![Secret scan](https://github.com/byrishi/helio/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/byrishi/helio/actions/workflows/secret-scan.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/byrishi/helio/badge)](https://scorecard.dev/viewer/?uri=github.com/byrishi/helio)
+[![Known vulnerabilities](https://snyk.io/test/github/byrishi/helio/badge.svg)](https://snyk.io/test/github/byrishi/helio)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot&logoColor=white)](.github/dependabot.yml)
+[![License: MIT](https://img.shields.io/github/license/byrishi/helio?color=ff5e1f)](LICENSE)
+
 [Website](https://helio.rishishah.in) · [Live demo](https://helio.rishishah.in/demo) · [Docs](docs/README.md)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbyrishi%2Fhelio&project-name=helio&repository-name=helio&env=SHINE_USER,SHINE_PASS,DASH_USER,DASH_PASSWORD,AUTH_SECRET,TARIFF&envDescription=Your%20ShineMonitor%20login%2C%20a%20dashboard%20login%2C%20and%20your%20electricity%20rate.&envLink=https%3A%2F%2Fgithub.com%2Fbyrishi%2Fhelio%2Fblob%2Fmain%2Fdocs%2Fconfiguration.md)
@@ -80,6 +88,23 @@ Full list: [docs/limitations.md](docs/limitations.md).
 ## Security
 
 Signed, `httpOnly` session cookies; every data route checks the session twice; secrets never ship to the browser; strict security headers; `no-store` on data; Next.js 15.5+. Known gaps and how to report issues: [docs/security.md](docs/security.md).
+
+
+### Automated checks
+
+Every push and pull request is checked in the open. Click any badge at the top to see the latest run.
+
+| Check | What it does |
+|---|---|
+| **CI** | Installs from the lockfile, runs `npm audit` (fails on moderate or worse), type-checks and builds |
+| **CodeQL** | GitHub's static analysis with the `security-extended` queries, on every push and weekly |
+| **Secret scan** | Gitleaks scans the full git history for keys, tokens and passwords |
+| **OpenSSF Scorecard** | Grades the repo's security practices: pinned actions, token permissions, branch protection and more |
+| **Snyk** | Independent check of the dependency tree against Snyk's vulnerability database |
+| **Dependabot** | Opens a pull request when a dependency or GitHub Action has an update or a fix |
+| **Dependency review** | Blocks pull requests that add a dependency with a known vulnerability |
+
+All workflow actions are pinned to exact commits and run with read-only tokens unless they need more.
 
 ## Documentation
 

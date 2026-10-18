@@ -40,5 +40,8 @@
   },
   "engines": {
     "node": ">=18.18"
+  },
+  "overrides": {
+    "postcss": "$postcss"
   }
 }
