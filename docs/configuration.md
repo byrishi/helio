@@ -27,6 +27,10 @@ Everything is set with environment variables. On Vercel: **Project → Settings 
 | `NEXT_PUBLIC_PROJECT_URL` | `https://helio.rishishah.in` | "About Helio" link on the demo page |
 | `NEXT_PUBLIC_REPO_URL` | `https://github.com/byrishi/helio` | GitHub links in the app |
 
+### Changing rates without redeploying
+
+`TARIFF`, `EXPORT_TARIFF` and `CURRENCY` are the defaults. Anyone signed in can override them from **What it's worth → Edit rates** on the dashboard. That choice is saved in their browser only, so each phone can use its own rates, and **Reset** goes back to the defaults.
+
 ## Advanced
 
 Only change these if ShineMonitor changes something or your account lives on a vendor-specific portal.

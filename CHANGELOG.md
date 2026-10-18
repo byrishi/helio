@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0 (2026-10-18)
+
+- Edit your electricity rates and currency from the dashboard (What it's worth → Edit rates). Saved per browser, with reset to the env defaults
+- Lifetime card uses a neutral icon instead of the rupee sign
+
 ## 1.0.0 (2026-10-18)
 
 First public release.

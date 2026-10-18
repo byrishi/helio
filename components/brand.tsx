@@ -5,11 +5,10 @@ const URL = process.env.NEXT_PUBLIC_BRAND_URL || "https://rishishah.in";
 export function Logo({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
-      <rect width="32" height="32" rx="9" className="fill-primary" />
-      <circle cx="16" cy="16" r="5" fill="#fff" />
-      <g stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
-        <path d="M16 5.5v2.4M16 24.1v2.4M5.5 16h2.4M24.1 16h2.4M8.6 8.6l1.7 1.7M21.7 21.7l1.7 1.7M8.6 23.4l1.7-1.7M21.7 10.3l1.7-1.7" />
-      </g>
+      <rect width="32" height="32" rx="8" className="fill-foreground" />
+      <path d="M8.5 19a7.5 7.5 0 0 1 15 0Z" fill="#f59e0b" />
+      <path d="M5 19h22" strokeWidth="2.2" strokeLinecap="round" className="stroke-background" />
+      <path d="M9 23.5h14" strokeWidth="2.2" strokeLinecap="round" opacity=".5" className="stroke-background" />
     </svg>
   );
 }

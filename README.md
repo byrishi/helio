@@ -28,7 +28,7 @@ The official apps show the right numbers, but they're slow, cluttered and hard t
 - **Live power** in kW and as a share of your system's capacity, with a *Generating / Idle / No recent data* status
 - **Any past day** in detail: units, value, peak power and when it hit, producing hours, a 5-minute power curve
 - **History:** the last 30 days with average and best day, every month of the year, and a daily log you can click into
-- **What it's worth** in your currency, with separate rates for units you use and units you export
+- **What it's worth** in your currency, with separate rates for units you use and units you export. Rates can be edited right on the dashboard
 - **Private by default:** a password-protected dashboard; your ShineMonitor login never reaches the browser
 - **Made for phones**, with light and dark themes and nothing to install
 - **Free to run** on Vercel: no database, no server to look after

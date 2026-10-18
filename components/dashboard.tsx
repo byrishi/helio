@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, IndianRupee, LogOut, Moon, Sun, SunMedium, Zap } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Infinity as InfinityIcon, LogOut, Moon, Pencil, Sun, SunMedium, Zap } from "lucide-react";
 import type { DayDetail, Overview } from "@/lib/shinemonitor";
 import type { Settings } from "@/lib/config";
 import { DOCS_URL, PROJECT_URL, REPO_URL } from "@/lib/links";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -21,7 +23,8 @@ type Data = Overview & { settings: Settings };
 let TZ = "Asia/Kolkata";
 let CUR = "₹";
 let LOC = "en-IN";
-const inr = (n: number) => CUR + Math.round(n).toLocaleString(LOC);
+// Whole units for big amounts, cents/paise for small ones so $0.18 rates still read correctly.
+const inr = (n: number) => CUR + (Math.abs(n) < 100 && n % 1 !== 0 ? n.toLocaleString(LOC, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(n).toLocaleString(LOC));
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const todayIST = () => new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 const shiftDate = (d: string, n: number) => new Date(new Date(d + "T12:00:00+05:30").getTime() + n * 86400000).toLocaleDateString("en-CA", { timeZone: TZ });
@@ -50,6 +53,10 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
   const [day, setDay] = useState<DayDetail | null>(null);
   const [dayLoading, setDayLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const ratesKey = mode === "demo" ? "helio.demo.rates" : "helio.rates";
+  const [rates, setRates] = useState<Rates | null>(null);
+  useEffect(() => { setRates(readRates(ratesKey)); }, [ratesKey]);
+  const saveRates = (r: Rates | null) => { setRates(r); try { r ? localStorage.setItem(ratesKey, JSON.stringify(r)) : localStorage.removeItem(ratesKey); } catch {} };
 
   const loadOverview = useCallback(() => getJSON<Data>(api).then((d) => { TZ = d.settings.timezone; CUR = d.settings.currency; LOC = d.settings.locale; setData(d); setErr(null); }).catch((e) => setErr(e.message)), [api]);
   const loadDay = useCallback((d: string) => {
@@ -92,6 +99,9 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
     );
   }
 
+  // Rates set on this device win over the server defaults, so anyone can use their own tariff and currency.
+  const set: Settings = { ...data.settings, ...(rates ?? {}) };
+  CUR = set.currency;
   const cap = data.plant.capacityKw;
   const diff = data.yesterdayKwh ? ((data.todayKwh - data.yesterdayKwh) / data.yesterdayKwh) * 100 : null;
   const isToday = date === todayIST();
@@ -134,9 +144,9 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
             </div>
           } />
         <Kpi icon={CalendarDays} label={`This month · ${MONTHS[Number(todayIST().slice(5, 7)) - 1]}`} value={fmt(data.monthKwh, 0)} unit="kWh"
-          footer={<span className="text-xs text-muted-foreground">Worth up to <b className="font-medium text-foreground">{inr(data.monthKwh * data.settings.tariff)}</b></span>} />
-        <Kpi icon={IndianRupee} label="Lifetime" value={fmt(data.totalKwh, 0)} unit="kWh"
-          footer={<span className="text-xs text-muted-foreground">{since ? `Since ${since} · ` : ""}up to <b className="font-medium text-foreground">{inr(data.totalKwh * data.settings.tariff)}</b></span>} />
+          footer={<span className="text-xs text-muted-foreground">Worth up to <b className="font-medium text-foreground">{inr(data.monthKwh * set.tariff)}</b></span>} />
+        <Kpi icon={InfinityIcon} label="Lifetime" value={fmt(data.totalKwh, 0)} unit="kWh"
+          footer={<span className="text-xs text-muted-foreground">{since ? `Since ${since} · ` : ""}up to <b className="font-medium text-foreground">{inr(data.totalKwh * set.tariff)}</b></span>} />
       </div>
 
       <Card id="generation" className="mt-4 scroll-mt-24 gap-0 py-0">
@@ -164,7 +174,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
             </div>
             <div className={cn("grid grid-cols-2 overflow-hidden rounded-lg border sm:grid-cols-4", dayLoading && "opacity-60")}>
               <MiniStat label="Units" value={day ? fmt(day.kwh) : "—"} unit="kWh" />
-              <MiniStat label="Worth" value={day ? inr(day.kwh * data.settings.tariff) : "—"} unit={day && data.settings.exportTariff ? `${inr(day.kwh * data.settings.exportTariff)} if exported` : ""} />
+              <MiniStat label="Worth" value={day ? inr(day.kwh * set.tariff) : "—"} unit={day && set.exportTariff ? `${inr(day.kwh * set.exportTariff)} if exported` : ""} />
               <MiniStat label="Peak" value={day?.peak ? fmt(day.peak.kw, 2) : "—"} unit={day?.peak ? `kW at ${t12(day.peak.t)}` : ""} />
               <MiniStat label="Producing" value={day?.firstAt ? `${t12(day.firstAt)} – ${t12(day.lastAt)}` : "—"} small />
             </div>
@@ -185,7 +195,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
 
           <TabsContent value="year" className="px-5 pb-5 pt-5 sm:px-6">
             <div className="mb-4 text-sm text-muted-foreground">
-              Total <b className="font-mono font-medium tabular text-foreground">{fmt(data.yearKwh, 0)}</b> kWh · worth up to <b className="font-medium text-foreground">{inr(data.yearKwh * data.settings.tariff)}</b>
+              Total <b className="font-mono font-medium tabular text-foreground">{fmt(data.yearKwh, 0)}</b> kWh · worth up to <b className="font-medium text-foreground">{inr(data.yearKwh * set.tariff)}</b>
             </div>
             <UnitsChart items={data.months.map((m) => ({ key: String(m.m), label: MONTHS[m.m - 1], title: MONTHS[m.m - 1], kwh: m.kwh }))} active={String(Number(todayIST().slice(5, 7)))} />
           </TabsContent>
@@ -216,7 +226,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary/80" style={{ width: `${(d.kwh / maxDay) * 100}%` }} /></div>
                     </TableCell>
                     <TableCell className="text-right font-mono tabular">{fmt(d.kwh)}</TableCell>
-                    <TableCell className="text-right font-mono tabular text-muted-foreground">{inr(d.kwh * data.settings.tariff)}</TableCell>
+                    <TableCell className="text-right font-mono tabular text-muted-foreground">{inr(d.kwh * set.tariff)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -225,23 +235,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
           </CardContent>
         </Card>
 
-        <Card className="gap-0 py-0">
-          <CardHeader className="border-b px-5 py-4 sm:px-6 [.border-b]:pb-4">
-            <CardTitle className="text-base font-medium">What it&apos;s worth</CardTitle>
-            <CardDescription>{data.settings.exportTariff ? "Your two electricity rates" : "Your electricity rate"}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5 px-5 py-5 sm:px-6">
-            <Rate label="Used at home" rate={data.settings.tariff} note="saves what you'd pay the grid" />
-            {data.settings.exportTariff > 0 && <Rate label="Exported to grid" rate={data.settings.exportTariff} note="credited per unit" />}
-            <Separator />
-            <div className="space-y-3 text-sm">
-              <ValueRow label="Today" lo={data.todayKwh * data.settings.exportTariff} hi={data.todayKwh * data.settings.tariff} />
-              <ValueRow label="This month" lo={data.monthKwh * data.settings.exportTariff} hi={data.monthKwh * data.settings.tariff} />
-              <ValueRow label="This year" lo={data.yearKwh * data.settings.exportTariff} hi={data.yearKwh * data.settings.tariff} />
-            </div>
-            {data.settings.exportTariff > 0 && <p className="text-xs leading-relaxed text-muted-foreground">The real figure sits in this range depending on how much you use while the sun is up. Use more in the daytime and you get closer to the higher number.</p>}
-          </CardContent>
-        </Card>
+        <WorthCard set={set} defaults={data.settings} custom={!!rates} onSave={saveRates} todayKwh={data.todayKwh} monthKwh={data.monthKwh} yearKwh={data.yearKwh} />
       </div>
     </Shell>
   );
@@ -335,6 +329,84 @@ function MiniStat({ label, value, unit, small }: { label: string; value: string;
       <div className={cn("mt-1 font-mono font-medium tabular", small ? "pt-1 text-sm" : "text-xl")}>{value}</div>
       {unit && <div className="mt-0.5 text-xs text-muted-foreground">{unit}</div>}
     </div>
+  );
+}
+
+type Rates = Pick<Settings, "tariff" | "exportTariff" | "currency">;
+
+function readRates(key: string): Rates | null {
+  try {
+    const r = JSON.parse(localStorage.getItem(key) || "null");
+    if (r && typeof r.tariff === "number" && typeof r.exportTariff === "number" && typeof r.currency === "string") return r;
+  } catch {}
+  return null;
+}
+
+const CURRENCIES = ["₹", "$", "€", "£", "A$", "C$", "¥", "R", "AED ", "SAR ", "Rs ", "৳", "₱", "₦", "R$", "kr ", "zł ", "₺"];
+
+function WorthCard({ set, defaults, custom, onSave, todayKwh, monthKwh, yearKwh }: { set: Settings; defaults: Settings; custom: boolean; onSave: (r: Rates | null) => void; todayKwh: number; monthKwh: number; yearKwh: number }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ tariff: "", exportTariff: "", currency: "" });
+  const open = () => { setForm({ tariff: String(set.tariff), exportTariff: set.exportTariff ? String(set.exportTariff) : "", currency: set.currency }); setEditing(true); };
+  const t = Number(form.tariff), e = form.exportTariff === "" ? 0 : Number(form.exportTariff);
+  const valid = form.tariff !== "" && isFinite(t) && t >= 0 && t < 10000 && isFinite(e) && e >= 0 && e < 10000 && form.currency.trim().length > 0 && form.currency.length <= 5;
+  const save = (ev: React.FormEvent) => { ev.preventDefault(); if (!valid) return; onSave({ tariff: t, exportTariff: e, currency: form.currency }); setEditing(false); };
+
+  return (
+    <Card className="gap-0 py-0">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 border-b px-5 py-4 sm:px-6 [.border-b]:pb-4">
+        <div className="space-y-1.5">
+          <CardTitle className="text-base font-medium">What it&apos;s worth</CardTitle>
+          <CardDescription>{editing ? "Set the rates on your electricity bill" : set.exportTariff ? "Your two electricity rates" : "Your electricity rate"}</CardDescription>
+        </div>
+        {!editing && (
+          <Button variant="outline" size="sm" onClick={open} className="-mt-0.5 shrink-0"><Pencil /> Edit rates</Button>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-5 px-5 py-5 sm:px-6">
+        {editing ? (
+          <form onSubmit={save} className="space-y-4">
+            <div className="grid grid-cols-[5.5rem_1fr] gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="cur">Currency</Label>
+                <Input id="cur" list="helio-currencies" value={form.currency} maxLength={5} onChange={(x) => setForm({ ...form, currency: x.target.value })} className="font-mono" />
+                <datalist id="helio-currencies">{CURRENCIES.map((c) => <option key={c} value={c} />)}</datalist>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tariff">Price of a unit from the grid</Label>
+                <Input id="tariff" inputMode="decimal" type="number" step="any" min="0" value={form.tariff} onChange={(x) => setForm({ ...form, tariff: x.target.value })} className="font-mono" required />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="export">Paid for each unit you export</Label>
+              <Input id="export" inputMode="decimal" type="number" step="any" min="0" placeholder="Leave empty if you aren't paid for exports" value={form.exportTariff} onChange={(x) => setForm({ ...form, exportTariff: x.target.value })} className="font-mono" />
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">Saved in this browser only. A unit is one kWh, the number your bill counts.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="submit" size="sm" disabled={!valid}><Check /> Save rates</Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+              {custom && (
+                <Button type="button" size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={() => { onSave(null); setEditing(false); }}>
+                  Reset to {defaults.currency}{defaults.tariff}
+                </Button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <>
+            <Rate label="Used at home" rate={set.tariff} note="saves what you'd pay the grid" />
+            {set.exportTariff > 0 && <Rate label="Exported to grid" rate={set.exportTariff} note="credited per unit" />}
+            <Separator />
+            <div className="space-y-3 text-sm">
+              <ValueRow label="Today" lo={todayKwh * set.exportTariff} hi={todayKwh * set.tariff} />
+              <ValueRow label="This month" lo={monthKwh * set.exportTariff} hi={monthKwh * set.tariff} />
+              <ValueRow label="This year" lo={yearKwh * set.exportTariff} hi={yearKwh * set.tariff} />
+            </div>
+            {set.exportTariff > 0 && <p className="text-xs leading-relaxed text-muted-foreground">The real figure sits in this range depending on how much you use while the sun is up. Use more in the daytime and you get closer to the higher number.</p>}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
