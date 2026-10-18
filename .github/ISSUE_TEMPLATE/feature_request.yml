@@ -1,0 +1,14 @@
+name: Feature or hardware request
+description: Suggest an improvement or support for another monitoring cloud
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes: { label: What are you trying to do?, description: The problem, not the solution. }
+    validations: { required: true }
+  - type: input
+    id: hardware
+    attributes: { label: Inverter / datalogger / monitoring app (if relevant), placeholder: "e.g. Growatt ShineWiFi-X, Solarman app" }
+  - type: textarea
+    id: idea
+    attributes: { label: Any idea how it could work? }

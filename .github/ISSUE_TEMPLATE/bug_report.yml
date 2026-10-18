@@ -1,0 +1,23 @@
+name: Bug report
+description: Something shows the wrong number, an error, or looks broken
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please don't paste passwords, AUTH_SECRET or full cookies. For security problems, use private vulnerability reporting instead."
+  - type: textarea
+    id: what
+    attributes: { label: What happened?, description: Include the exact error text if there is one. }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: What did you expect? }
+  - type: input
+    id: shine
+    attributes: { label: Does shinemonitor.com show the right value?, placeholder: "e.g. yes, 14.0 kWh today" }
+  - type: dropdown
+    id: host
+    attributes: { label: Where is it hosted?, options: [Vercel, Netlify, Render, Railway, Self-hosted / Docker, Other] }
+  - type: input
+    id: version
+    attributes: { label: Helio version or commit }

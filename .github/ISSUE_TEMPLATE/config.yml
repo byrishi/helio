@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup help (read first)
+    url: https://github.com/byrishi/helio/blob/main/docs/troubleshooting.md
+    about: Most setup problems are covered in Troubleshooting.
+  - name: Report a security issue privately
+    url: https://github.com/byrishi/helio/security/advisories/new
+    about: Please don't open public issues for vulnerabilities.
