@@ -28,6 +28,8 @@ Everything is set with environment variables. On Vercel: **Project → Settings 
 | `TELEGRAM_LINK` | none | Connect code from the Helio Solar bot for the [daily alert](alerts.md) |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | none | Your own Telegram bot instead |
 | `CRON_SECRET` | none | Optional: only Vercel's scheduler can then trigger the daily alert |
+| `APP_URL` | your Vercel production address | The dashboard link at the end of each alert, if you use a custom domain |
+| `NEXT_PUBLIC_TELEGRAM_CONNECT_URL` | `https://helio.rishishah.in/telegram` | Where **Connect Telegram** points, for forks that run their own relay |
 | `ALERT_ONLY_ISSUES` | `false` | `true` sends the alert only on days with something to check |
 | `WEATHER` | on | Set to `off` to never call Open-Meteo. Health then compares raw output only |
 | `SHINE_PLANT_ID` | first plant | Only for accounts with several plants: the **API** plant id to show |

@@ -31,6 +31,14 @@ You'll also need free accounts on [GitHub](https://github.com/signup) and [Verce
 
 Optional settings like `EXPORT_TARIFF`, `CURRENCY` and `TIMEZONE` are covered in [Configuration](configuration.md).
 
+## After the first sign-in
+
+Three things make the rest of Helio work. Each takes under a minute:
+
+1. **Location.** If the Health card asks for one, tap **Use this device's location** while you're at home. The weather check then tells cloudy days apart from dirty panels. See [Health and inverter](health-and-inverter.md).
+2. **Daily alert.** In the Daily alert card, tap **Connect Telegram**, press Start in the Helio Solar bot, and add the code it sends as `TELEGRAM_LINK` in Vercel. Redeploy, then tap **Send a test alert**. See [Daily alert](alerts.md).
+3. **Cleaning date.** The next time the panels are washed, mark it on the Health card so the dust check starts from a clean baseline.
+
 ## Other hosts
 
 Helio is a standard Next.js 15 app. Any Node 18+ host works:

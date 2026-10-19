@@ -13,10 +13,11 @@ All responses are JSON. Live endpoints need the session cookie that `/api/auth/l
 | `GET` | `/api/solar/export` | session | CSV. Daily: `from`, `to` (up to 366 days). Monthly: `scope=months&year=YYYY`. Optional `tariff`, `export`, `currency`, `lat`, `lon` |
 | `GET` | `/api/solar/alerts` | session | Which alert channels are set, and the text the next alert would send |
 | `POST` | `/api/solar/alerts` | session | Send a test alert now |
+| `GET` | `/api/solar/alert-card` | session | Today's alert as the 1080×1440 PNG it sends |
 | `GET` | `/api/cron/daily` | `Authorization: Bearer $CRON_SECRET` | The daily alert. Called by Vercel Cron |
 | `GET` | `/api/demo` | public | Overview with sample data |
 | `GET` | `/api/demo/day?date=YYYY-MM-DD` | public | Day detail with sample data |
-| `GET` | `/api/demo/health`, `/api/demo/inverter`, `/api/demo/export`, `/api/demo/alerts` | public | The same, with sample data. The demo never sends alerts |
+| `GET` | `/api/demo/health`, `/api/demo/inverter`, `/api/demo/export`, `/api/demo/alerts`, `/api/demo/alert-card` | public | The same, with sample data. The demo never sends alerts |
 
 Errors look like `{ "error": "message" }` with status `400`, `401`, `429` or `502` (ShineMonitor error, passed through).
 
