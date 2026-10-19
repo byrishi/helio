@@ -43,7 +43,7 @@ The official apps show the right numbers, but they're slow, cluttered and hard t
 - **Inverter and grid:** live panel voltage and current, grid voltage and frequency, temperatures, and a daily grid check with high-voltage trips and output stops
 - **Alarms and WiFi stick:** the inverter's alarm history and whether the datalogger is online
 - **CSV export:** daily and monthly files with clearly labelled units, ready for Excel or Google Sheets
-- **Daily alert** on the free ntfy app or Telegram: today's units and anything that needs a look. [Set it up](docs/alerts.md)
+- **Daily alert on Telegram** from the Helio Solar bot: today's units and anything that needs a look. [Connect in two steps](docs/alerts.md)
 - **Location is automatic** from your ShineMonitor plant, with a one-tap fallback
 - **Private by default:** a password-protected dashboard; your ShineMonitor login never reaches the browser
 - **Made for phones**, with light and dark themes and nothing to install
@@ -99,7 +99,7 @@ Full list: [docs/limitations.md](docs/limitations.md).
 
 ## Security
 
-Signed, `httpOnly` session cookies; every data route checks the session twice; secrets never ship to the browser; strict security headers; `no-store` on data; Next.js 15.5+. No analytics or trackers. Besides ShineMonitor, Helio contacts Open-Meteo for weather, which receives your roof's coordinates rounded to about 1 km (turn it off with `WEATHER=off`), and, only if you set up the daily alert, ntfy or Telegram. Known gaps and how to report issues: [docs/security.md](docs/security.md).
+Signed, `httpOnly` session cookies; every data route checks the session twice; secrets never ship to the browser; strict security headers; `no-store` on data; Next.js 15.5+. No analytics or trackers. Besides ShineMonitor, Helio contacts Open-Meteo for weather, which receives your roof's coordinates rounded to about 1 km (turn it off with `WEATHER=off`), and, only if you connect the daily alert, Telegram (through the Helio Solar bot's relay, which stores nothing, or your own bot). Known gaps and how to report issues: [docs/security.md](docs/security.md).
 
 
 ### Automated checks

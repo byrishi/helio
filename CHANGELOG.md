@@ -2,7 +2,7 @@
 
 ## 2.1.0 (2026-10-19)
 
-- **Daily alert** on ntfy or Telegram: today's units, yesterday's health, cleaning advice, grid events, alarms and WiFi stick status. Scheduled with Vercel Cron, protected by `CRON_SECRET`; preview and test from the dashboard
+- **Daily alert on Telegram** from the Helio Solar bot: connect in two steps (tap Connect Telegram, add the code as `TELEGRAM_LINK`). Today's units, yesterday's health, cleaning advice, grid events, alarms and WiFi stick status. Scheduled with Vercel Cron; preview and test from the dashboard. Your own bot works too
 - The Helio logo animates in, breathes while the system is generating, and turns on hover. Same shape; still under reduced motion
 - "Use this device's location" now works: the security headers allowed no geolocation at all before
 - Narrow phones: the header keeps the plant name readable down to 320 px

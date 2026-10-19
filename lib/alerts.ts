@@ -1,5 +1,6 @@
 // Daily alert: one short message with today's units and anything that needs a look.
-// Channels: Telegram (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID) and ntfy (NTFY_TOPIC, optional NTFY_SERVER / NTFY_TOKEN).
+// Delivered on Telegram, either through the Helio Solar bot (TELEGRAM_LINK, the code the bot gives you) or
+// through a bot of your own (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID).
 import type { Health } from "@/lib/health";
 import type { Alarm, Collector, InverterDay, Live } from "@/lib/inverter";
 import type { Overview } from "@/lib/shinemonitor";
@@ -77,40 +78,37 @@ export function buildReport(r: ReportInput): Report {
   return { title, body, issues, priority: urgent ? "high" : "default" };
 }
 
+export const RELAY_URL = () => process.env.TELEGRAM_RELAY_URL || "https://helio.rishishah.in/api/telegram/send";
+
 export function channels() {
   return {
-    telegram: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
-    ntfy: !!process.env.NTFY_TOPIC,
-    cron: !!process.env.CRON_SECRET,
+    helioBot: !!process.env.TELEGRAM_LINK,
+    ownBot: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
     onlyIssues: /^(1|true|yes|on)$/i.test(process.env.ALERT_ONLY_ISSUES ?? ""),
   };
 }
+export const anyChannel = () => { const c = channels(); return c.helioBot || c.ownBot; };
 
-/** Send to every configured channel. Returns one result per channel. */
+/** Send to Telegram. Returns one result per configured route. */
 export async function send(rep: Report, dashboardUrl?: string): Promise<{ channel: string; ok: boolean; error?: string }[]> {
   const out: { channel: string; ok: boolean; error?: string }[] = [];
-  const text = dashboardUrl ? `${rep.body}\n\n${dashboardUrl}` : rep.body;
+  const text = `${rep.title}\n\n${rep.body}${dashboardUrl ? `\n\n${dashboardUrl}` : ""}`;
+  if (process.env.TELEGRAM_LINK) {
+    try {
+      const r = await fetch(RELAY_URL(), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ link: process.env.TELEGRAM_LINK, text }) });
+      const j = await r.json().catch(() => ({}));
+      out.push(r.ok && j.ok ? { channel: "Helio Solar bot", ok: true } : { channel: "Helio Solar bot", ok: false, error: j.error || `HTTP ${r.status}` });
+    } catch (e) { out.push({ channel: "Helio Solar bot", ok: false, error: (e as Error).message }); }
+  }
   if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
     try {
       const r = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text: `${rep.title}\n\n${text}`, disable_web_page_preview: true }),
+        body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text, disable_web_page_preview: true }),
       });
       const j = await r.json().catch(() => ({}));
-      out.push(r.ok && j.ok ? { channel: "telegram", ok: true } : { channel: "telegram", ok: false, error: j.description || `HTTP ${r.status}` });
-    } catch (e) { out.push({ channel: "telegram", ok: false, error: (e as Error).message }); }
-  }
-  if (process.env.NTFY_TOPIC) {
-    try {
-      const server = (process.env.NTFY_SERVER || "https://ntfy.sh").replace(/\/$/, "");
-      // HTTP headers must be plain ASCII, so the title is simplified; the body keeps full text.
-      const title = rep.title.replace(/[·–—]/g, "-").replace(/[^\x20-\x7e]/g, "").trim() || "Helio";
-      const headers: Record<string, string> = { Title: title, Priority: rep.priority === "high" ? "high" : "default", Tags: rep.issues.length ? "warning" : "sunny" };
-      if (dashboardUrl) headers.Click = dashboardUrl;
-      if (process.env.NTFY_TOKEN) headers.Authorization = `Bearer ${process.env.NTFY_TOKEN}`;
-      const r = await fetch(`${server}/${encodeURIComponent(process.env.NTFY_TOPIC)}`, { method: "POST", headers, body: rep.body });
-      out.push(r.ok ? { channel: "ntfy", ok: true } : { channel: "ntfy", ok: false, error: `HTTP ${r.status}` });
-    } catch (e) { out.push({ channel: "ntfy", ok: false, error: (e as Error).message }); }
+      out.push(r.ok && j.ok ? { channel: "your bot", ok: true } : { channel: "your bot", ok: false, error: j.description || `HTTP ${r.status}` });
+    } catch (e) { out.push({ channel: "your bot", ok: false, error: (e as Error).message }); }
   }
   return out;
 }

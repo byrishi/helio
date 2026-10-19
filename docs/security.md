@@ -10,7 +10,7 @@
 - **Headers:** `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, HSTS (2 years, preload), `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (camera, mic, location, payment off), CSP `frame-ancestors 'none'`, `X-Robots-Tag: noindex`.
 - **No caching of your data:** data responses send `Cache-Control: private, no-store`.
 - **Up-to-date framework:** Next.js 15.5+, which includes the fix for the middleware bypass CVE-2025-29927.
-- **No database, no analytics, no trackers.** Helio talks to ShineMonitor and, for weather, to [Open-Meteo](https://open-meteo.com), which receives only your roof's coordinates rounded to 2 decimals (about 1 km), from your server. Set `WEATHER=off` to stop that. A location you share with *Use this device's location* goes to your own Helio server only. If you set up the [daily alert](alerts.md), your server also sends one message a day to ntfy or Telegram, containing your plant's name and readings. The daily job is protected by `CRON_SECRET`.
+- **No database, no analytics, no trackers.** Helio talks to ShineMonitor and, for weather, to [Open-Meteo](https://open-meteo.com), which receives only your roof's coordinates rounded to 2 decimals (about 1 km), from your server. Set `WEATHER=off` to stop that. A location you share with *Use this device's location* goes to your own Helio server only. If you connect the [daily alert](alerts.md), your server sends one message a day to Telegram with your plant's name and readings, through the Helio Solar bot's relay (which stores nothing) or your own bot. Without `CRON_SECRET`, the daily job only accepts Vercel's scheduler and runs at most once every 20 hours.
 
 ## Known gaps
 

@@ -19,7 +19,7 @@ Yes. Helio compares recent sunny days with how the panels did just after the las
 Yes. **Export** in the top bar downloads daily or monthly CSV files for Excel or Google Sheets.
 
 **Can it alert me when something's wrong?**
-Yes, once a day, on the free ntfy app or Telegram. See [Daily alert](alerts.md).
+Yes, once a day on Telegram, from the Helio Solar bot. Connecting takes two steps. See [Daily alert](alerts.md).
 
 **Does it need my location?**
 Only for weather, and usually it reads it from your ShineMonitor plant automatically. Coordinates are rounded to about 1 km before going to Open-Meteo. Set `WEATHER=off` to skip it.

@@ -19,7 +19,7 @@ Browser ──HTTPS + session cookie──▶ Helio (Next.js, your Vercel projec
 
 ### Other services
 
-[Open-Meteo](https://open-meteo.com) for daily sunshine and rain (`shortwave_radiation_sum`, `precipitation_sum`), cached for an hour. It receives only coordinates rounded to 2 decimals. `WEATHER=off` disables it. For the optional [daily alert](alerts.md), [ntfy](https://ntfy.sh) and/or the Telegram Bot API, called once a day by Vercel Cron (`vercel.json`) at `/api/cron/daily`.
+[Open-Meteo](https://open-meteo.com) for daily sunshine and rain (`shortwave_radiation_sum`, `precipitation_sum`), cached for an hour. It receives only coordinates rounded to 2 decimals. `WEATHER=off` disables it. For the optional [daily alert](alerts.md), Telegram: through the Helio Solar bot's stateless relay at `helio.rishishah.in/api/telegram/send`, or the Telegram Bot API directly with your own bot. Vercel Cron (`vercel.json`) calls `/api/cron/daily` once a day.
 
 ## Stack
 
@@ -49,7 +49,7 @@ lib/
   inverter.ts             device readings, grid events, alarms, datalogger
   health.ts               health, cleaning and estimate maths; Open-Meteo
   handlers.ts             shared live/demo handlers for health, inverter, export, alerts
-  alerts.ts               daily alert text and ntfy / Telegram senders
+  alerts.ts               daily alert text and Telegram delivery
   csv.ts                  CSV writer
   auth.ts                 signed sessions
   guard.ts                per-route session check

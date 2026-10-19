@@ -1,7 +1,7 @@
 // Shared handlers for the signed-in routes (/api/solar/*) and the public demo (/api/demo/*).
 // The demo never touches a real account: every read goes to the mock functions instead.
 import { NextResponse } from "next/server";
-import { buildReport, channels, send } from "@/lib/alerts";
+import { anyChannel, buildReport, channels, send } from "@/lib/alerts";
 import { config } from "@/lib/config";
 import { toCsv } from "@/lib/csv";
 import { computeHealth, fetchWeather, type Weather } from "@/lib/health";
@@ -247,28 +247,33 @@ export async function alerts(req: Request, demo: boolean) {
   try {
     if (req.method === "POST") {
       if (demo) return NextResponse.json({ error: "The demo can't send alerts. Set one up on your own copy." }, { status: 403 });
-      const ch = channels();
-      if (!ch.telegram && !ch.ntfy) return NextResponse.json({ error: "No alert channel is set. Add NTFY_TOPIC or TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID." }, { status: 400 });
+      if (!anyChannel()) return NextResponse.json({ error: "Telegram isn't connected yet. Tap Connect Telegram, then add the code as TELEGRAM_LINK." }, { status: 400 });
       const rep = await report(false);
       return NextResponse.json({ sent: await send({ ...rep, title: `Test: ${rep.title}` }, dashboardUrl()) }, { headers: noStore });
     }
     const rep = await report(demo);
-    return NextResponse.json({ channels: demo ? { telegram: false, ntfy: false, cron: false, onlyIssues: false } : channels(), preview: rep }, { headers: noStore });
+    return NextResponse.json({ channels: demo ? { helioBot: false, ownBot: false, onlyIssues: false } : channels(), preview: rep }, { headers: noStore });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }
 }
 
-/** Called by Vercel Cron once a day. Vercel sends "Authorization: Bearer $CRON_SECRET". */
+/** Called by Vercel Cron once a day. With CRON_SECRET set, Vercel sends "Authorization: Bearer $CRON_SECRET"
+ *  and nothing else gets in. Without it, only requests that identify as Vercel Cron are accepted, at most once
+ *  every 20 hours per server instance. The worst a spoofed call can do is send you your own summary early. */
+let lastRun = 0;
 export async function cronDaily(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return NextResponse.json({ error: "Set CRON_SECRET to enable the daily alert" }, { status: 503 });
-  if (req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const ch = channels();
-  if (!ch.telegram && !ch.ntfy) return NextResponse.json({ skipped: "no channel configured" });
+  if (secret) { if (req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  else {
+    if (!/vercel-cron/i.test(req.headers.get("user-agent") ?? "")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (Date.now() - lastRun < 20 * 3600_000) return NextResponse.json({ skipped: "already ran today" });
+  }
+  if (!anyChannel()) return NextResponse.json({ skipped: "Telegram not connected" });
   try {
+    lastRun = Date.now();
     const rep = await report(false);
-    if (ch.onlyIssues && !rep.issues.length) return NextResponse.json({ skipped: "nothing to report (ALERT_ONLY_ISSUES)" });
+    if (channels().onlyIssues && !rep.issues.length) return NextResponse.json({ skipped: "nothing to report (ALERT_ONLY_ISSUES)" });
     return NextResponse.json({ sent: await send(rep, dashboardUrl()) });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
