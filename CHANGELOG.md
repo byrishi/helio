@@ -2,6 +2,8 @@
 
 ## 2.1.0 (2026-10-19)
 
+- Daily alert arrives as a Helio-branded image (today's units, status, power curve, health, grid, system, what to check), with a short caption; full text if the image can't be made
+
 - **Daily alert on Telegram** from the Helio Solar bot: connect in two steps (tap Connect Telegram, add the code as `TELEGRAM_LINK`). Today's units, yesterday's health, cleaning advice, grid events, alarms and WiFi stick status. Scheduled with Vercel Cron; preview and test from the dashboard. Your own bot works too
 - The Helio logo animates in, breathes while the system is generating, and turns on hover. Same shape; still under reduced motion
 - "Use this device's location" now works: the security headers allowed no geolocation at all before

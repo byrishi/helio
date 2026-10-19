@@ -1,6 +1,8 @@
 # Daily alert
 
-Every evening, between 6:30 and 7:30 pm India time by default, Helio sends one Telegram message with today's units and anything that needs a look. It comes from the **Helio Solar** bot, so there's nothing to build.
+Every evening, between 6:30 and 7:30 pm India time by default, Helio sends one Telegram message with today's units and anything that needs a look. It arrives as a **Helio-branded image** with today's power curve, and its caption lists what to check. It comes from the **Helio Solar** bot, so there's nothing to build.
+
+![The daily alert image: today's units, status, power curve, three figures, health, grid and system rows, and what to check](images/alert-card.png)
 
 ## Connect in two steps
 
@@ -11,7 +13,7 @@ Then tap **Send a test alert**. That's it: the daily schedule is already in `ver
 
 ## What it says
 
-The same sections in the same order every day, so you can read it at a glance. Lines only appear when there's data for them.
+The image is drawn on your own server. If it can't be made, Helio sends the full text instead. The text version has the same sections in the same order every day; lines only appear when there's data for them.
 
 ```
 ☀️ My Rooftop · Mon, 19 Oct

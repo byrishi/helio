@@ -43,7 +43,7 @@ The official apps show the right numbers, but they're slow, cluttered and hard t
 - **Inverter and grid:** live panel voltage and current, grid voltage and frequency, temperatures, and a daily grid check with high-voltage trips and output stops
 - **Alarms and WiFi stick:** the inverter's alarm history and whether the datalogger is online
 - **CSV export:** daily and monthly files with clearly labelled units, ready for Excel or Google Sheets
-- **Daily alert on Telegram** from the Helio Solar bot: today's units and anything that needs a look. [Connect in two steps](docs/alerts.md)
+- **Daily alert on Telegram** from the Helio Solar bot, as a branded image with today's curve and anything that needs a look. [Connect in two steps](docs/alerts.md)
 - **Location is automatic** from your ShineMonitor plant, with a one-tap fallback
 - **Private by default:** a password-protected dashboard; your ShineMonitor login never reaches the browser
 - **Made for phones**, with light and dark themes and nothing to install

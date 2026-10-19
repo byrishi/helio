@@ -249,7 +249,7 @@ export async function alerts(req: Request, demo: boolean) {
       if (demo) return NextResponse.json({ error: "The demo can't send alerts. Set one up on your own copy." }, { status: 403 });
       if (!anyChannel()) return NextResponse.json({ error: "Telegram isn't connected yet. Tap Connect Telegram, then add the code as TELEGRAM_LINK." }, { status: 400 });
       const rep = await report(false);
-      return NextResponse.json({ sent: await send({ ...rep, html: `🧪 <i>Test alert</i>\n\n${rep.html}` }, dashboardUrl()) }, { headers: noStore });
+      return NextResponse.json({ sent: await send(rep, dashboardUrl(), { test: true }) }, { headers: noStore });
     }
     const rep = await report(demo);
     return NextResponse.json({ channels: demo ? { helioBot: false, ownBot: false, onlyIssues: false } : channels(), preview: rep }, { headers: noStore });

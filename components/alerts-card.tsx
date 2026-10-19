@@ -67,9 +67,10 @@ export function AlertsCard({ api = "/api/solar", demo = false, docsUrl }: { api?
             </div>
 
             {open && (
-              <div className="rounded-lg border bg-muted/40 px-3 py-2.5 text-[13px] leading-relaxed">
-                <div className="font-medium">{d.preview.title}</div>
-                <div className="mt-1.5 whitespace-pre-line break-words text-muted-foreground">{d.preview.body}</div>
+              <div className="overflow-hidden rounded-lg border bg-muted/40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`${api}/alert-card`} alt={`Today's alert: ${d.preview.title}`} width={1080} height={1440} className="block h-auto w-full" />
+                <div className="px-3 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">Sent as this image, with the &ldquo;to check&rdquo; list as its caption.</div>
               </div>
             )}
             {result && <p className="text-xs text-muted-foreground">{result}</p>}

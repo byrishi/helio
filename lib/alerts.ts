@@ -18,7 +18,14 @@ export type ReportInput = {
   alarms: Alarm[];              // recent alarms; today's are reported
   limits: { highV: number; lowV: number };
 };
-export type Report = { title: string; body: string; html: string; issues: string[]; priority: "default" | "high" };
+export type Card = {
+  name: string; date: string; kwh: number; kwp: number; verdict: string; ok: boolean;
+  stats: { value: string; label: string }[];
+  rows: { label: string; value: string; tone: "ok" | "warn" | "muted" }[];
+  curve: { t: string; kw: number }[];
+  issues: string[];
+};
+export type Report = { title: string; body: string; html: string; caption: string; issues: string[]; priority: "default" | "high"; card: Card };
 
 const t12 = (t: string) => { const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
 const f = (n: number, d = 1) => n.toFixed(d);
@@ -131,7 +138,34 @@ export function buildReport(r: ReportInput): Report {
   ].join("\n");
 
   const urgent = issues.some((i) => /No data|No units|tripped|fault|error/i.test(i));
-  return { title, body: plain, html, issues, priority: urgent ? "high" : "default" };
+  // The image card: the same facts, distilled to what reads at a glance on a phone.
+  const st = (x: string, sw: string[]) => sections.find((y) => y.name === x)?.lines.find((l) => sw.some((w) => l.startsWith(w))) ?? null;
+  const stats: Card["stats"] = [];
+  if (r.kwp) stats.push({ value: f(o.todayKwh / r.kwp, 2), label: "kWh per kWp" });
+  if (o.yesterdayKwh) { const d = ((o.todayKwh - o.yesterdayKwh) / o.yesterdayKwh) * 100; stats.push({ value: `${d >= 0 ? "+" : "−"}${f(Math.abs(d), 0)}%`, label: "vs yesterday" }); }
+  stats.push({ value: f(o.monthKwh, 0), label: "kWh this month" });
+  const rows: Card["rows"] = [];
+  const yl = st("Health", ["Yesterday", "Days are scored"]);
+  if (yl) rows.push({ label: "Yesterday", value: yl.replace(/^Yesterday( was)?:? ?/, "").replace(/^Days are scored once there are 7 days of data/, "Scored after 7 days of data"), tone: /low|no units/i.test(yl) ? "warn" : /good/.test(yl) ? "ok" : "muted" });
+  const pl = st("Health", ["Panels"]);
+  if (pl) rows.push({ label: "Panels", value: pl.replace(/^Panels: /, "").replace(/, (about|within).*$/, ""), tone: /cleaning recommended/.test(pl) ? "warn" : /clean/.test(pl) ? "ok" : "muted" });
+  if (day?.grid.min && day.grid.max) rows.push({ label: "Grid", value: `${f(day.grid.min.v, 0)}–${f(day.grid.max.v, 0)} V`, tone: day.events.some((e) => e.kind !== "stopped") ? "warn" : "ok" });
+  // System folds inverter, WiFi stick and alarms into one line; it turns amber if any of them needs a look.
+  const il = st("System", ["Inverter"]), wl = st("System", ["WiFi stick"]), al = st("System", ["Alarms today"]);
+  const sysBits = [il ? `Inverter ${il.replace(/^Inverter: /, "").replace(/, hottest.*$/, "").toLowerCase()}` : null,
+    wl ? (/stopped|no data/.test(wl) ? wl.replace(/^WiFi stick: /, "") : "WiFi stick OK") : null,
+    al ? (/none/.test(al) ? "no alarms" : al.replace(/^Alarms today: (\d+)/, "$1 alarms")) : null].filter(Boolean) as string[];
+  if (sysBits.length) rows.push({ label: "System", value: sysBits.join(" · "), tone: issues.some((i) => /inverter reports|No data|Inverter (warning|error|fault|offline)/.test(i)) ? "warn" : "ok" });
+  for (const r0 of rows) r0.value = r0.value.charAt(0).toUpperCase() + r0.value.slice(1);
+  const card: Card = {
+    name, date: dateLabel, kwh: o.todayKwh, kwp: r.kwp, verdict: verdict[0].toUpperCase() + verdict.slice(1), ok: !issues.length, stats, rows,
+    curve: (day?.samples ?? []).filter((x) => x.w !== null).map((x) => ({ t: x.t, kw: (x.w ?? 0) / 1000 })),
+    issues: issues.map((i) => i.split(". ")[0].replace(/\.$/, "")),
+  };
+  // Telegram caption: the verdict and what to do, under 1024 characters. Detail is in the image.
+  const caption = [`☀️ <b>${esc(name)}</b> · ${esc(dateLabel)}`, `<b>${f(o.todayKwh)} kWh</b> today · ${issues.length ? `⚠️ ${esc(verdict)}` : `✅ ${esc(verdict)}`}`,
+    ...(issues.length ? ["", ...issues.map((i) => `• ${esc(i)}`)] : [])].join("\n").slice(0, 900);
+  return { title, body: plain, html, caption, issues, priority: urgent ? "high" : "default", card };
 }
 
 export const RELAY_URL = () => process.env.TELEGRAM_RELAY_URL || "https://helio.rishishah.in/api/telegram/send";
@@ -146,22 +180,34 @@ export function channels() {
 export const anyChannel = () => { const c = channels(); return c.helioBot || c.ownBot; };
 
 /** Send to Telegram. Returns one result per configured route. */
-export async function send(rep: Report, dashboardUrl?: string): Promise<{ channel: string; ok: boolean; error?: string }[]> {
+/** Send to Telegram: the branded card image with a short caption, falling back to the full text message. */
+export async function send(rep: Report, dashboardUrl?: string, opts: { test?: boolean } = {}): Promise<{ channel: string; ok: boolean; error?: string }[]> {
   const out: { channel: string; ok: boolean; error?: string }[] = [];
-  const text = `${rep.html}${dashboardUrl ? `\n\n<a href="${dashboardUrl}">Open your dashboard</a>` : ""}`;
+  const link = dashboardUrl ? `\n\n<a href="${dashboardUrl}">Open your dashboard</a>` : "";
+  const prefix = opts.test ? "🧪 <i>Test alert</i>\n\n" : "";
+  const text = `${prefix}${rep.html}${link}`;
+  const caption = `${prefix}${rep.caption}${link}`;
+  let png: Buffer | null = null;
+  try { const { renderCard } = await import("@/lib/alert-card"); png = Buffer.from(await renderCard(rep.card)); } catch { png = null; }
+
   if (process.env.TELEGRAM_LINK) {
     try {
-      const r = await fetch(RELAY_URL(), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ link: process.env.TELEGRAM_LINK, text, format: "html" }) });
+      const r = await fetch(RELAY_URL(), { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify(png ? { link: process.env.TELEGRAM_LINK, caption, photo: png.toString("base64"), format: "html" } : { link: process.env.TELEGRAM_LINK, text, format: "html" }) });
       const j = await r.json().catch(() => ({}));
       out.push(r.ok && j.ok ? { channel: "Helio Solar bot", ok: true } : { channel: "Helio Solar bot", ok: false, error: j.error || `HTTP ${r.status}` });
     } catch (e) { out.push({ channel: "Helio Solar bot", ok: false, error: (e as Error).message }); }
   }
   if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
     try {
-      const r = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", disable_web_page_preview: true }),
-      });
+      const api = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+      let r: Response;
+      if (png) {
+        const fd = new FormData();
+        fd.append("chat_id", process.env.TELEGRAM_CHAT_ID); fd.append("caption", caption); fd.append("parse_mode", "HTML");
+        fd.append("photo", new Blob([new Uint8Array(png)], { type: "image/png" }), "helio.png");
+        r = await fetch(`${api}/sendPhoto`, { method: "POST", body: fd });
+      } else r = await fetch(`${api}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", disable_web_page_preview: true }) });
       const j = await r.json().catch(() => ({}));
       out.push(r.ok && j.ok ? { channel: "your bot", ok: true } : { channel: "your bot", ok: false, error: j.description || `HTTP ${r.status}` });
     } catch (e) { out.push({ channel: "your bot", ok: false, error: (e as Error).message }); }
