@@ -18,6 +18,7 @@ import { Logo, Signature } from "@/components/brand";
 import { cn } from "@/lib/utils";
 import { ExportButton, HealthCard, STATUS, configureHealth, useHealth } from "@/components/health-card";
 import { InverterCard, configureInverter } from "@/components/inverter-card";
+import { AlertsCard } from "@/components/alerts-card";
 
 type Data = Overview & { settings: Settings };
 
@@ -263,7 +264,10 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
           </CardContent>
         </Card>
 
-        <WorthCard set={set} defaults={data.settings} custom={!!rates} onSave={saveRates} todayKwh={data.todayKwh} monthKwh={data.monthKwh} yearKwh={data.yearKwh} />
+        <div className="flex min-w-0 flex-col gap-4">
+          <WorthCard set={set} defaults={data.settings} custom={!!rates} onSave={saveRates} todayKwh={data.todayKwh} monthKwh={data.monthKwh} yearKwh={data.yearKwh} />
+          <AlertsCard api={api} demo={mode === "demo"} docsUrl={`${REPO_URL}/blob/main/docs/alerts.md`} />
+        </div>
       </div>
     </Shell>
   );
@@ -273,18 +277,18 @@ function Shell({ children, mode, name = "Helio", meta, status, onLogout, exportB
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b bg-card/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <Logo />
+        <div className="mx-auto flex h-16 max-w-[1240px] items-center justify-between gap-2 px-3 min-[360px]:px-4 sm:gap-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Logo animate live={status === "live"} />
             <span className="truncate font-medium">{name}</span>
             {meta && <><Separator orientation="vertical" className="hidden h-5 sm:block" /><span className="hidden text-sm text-muted-foreground sm:inline">{meta}</span></>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {status && <StatusBadge status={status} compact={mode === "demo"} />}
             {exportButton}
             <ThemeToggle />
             {mode === "demo"
-              ? <Button asChild size="sm"><a href={REPO_URL} target="_blank" rel="noopener"><span className="sm:hidden">Get it</span><span className="hidden sm:inline">Get your own</span></a></Button>
+              ? <Button asChild size="sm" className="max-sm:px-3"><a href={REPO_URL} target="_blank" rel="noopener"><span className="sm:hidden">Get it</span><span className="hidden sm:inline">Get your own</span></a></Button>
               : <Button variant="outline" size="sm" onClick={onLogout}><LogOut /><span className="hidden sm:inline">Sign out</span></Button>}
           </div>
         </div>

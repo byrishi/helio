@@ -9,7 +9,7 @@ Browser ──HTTPS + session cookie──▶ Helio (Next.js, your Vercel projec
 ```
 
 - **No central server.** Each person deploys their own copy, and it talks to ShineMonitor with their own login.
-- **No database.** Every number is fetched on demand and cached in memory for 60 seconds per server instance.
+- **No database.** Every number is fetched on demand and cached in memory per server instance: 60 seconds for generation, 10 minutes for alarms, an hour for weather. A cleaning date or location you set on the dashboard stays in that browser.
 - **ShineMonitor signing** follows their [documented scheme](https://api.shinemonitor.com): log in with `sign = SHA1(salt + SHA1(password) + action)`, then sign each request with `SHA1(salt + secret + token + action)`. Tokens are cached and refreshed automatically.
 - **Plant discovery.** Helio asks ShineMonitor for the account's plants (`queryPlants`) rather than trusting a configured id, because the id shown on shinemonitor.com can differ from the API id.
 
@@ -19,7 +19,7 @@ Browser ──HTTPS + session cookie──▶ Helio (Next.js, your Vercel projec
 
 ### Other services
 
-[Open-Meteo](https://open-meteo.com) for daily sunshine and rain (`shortwave_radiation_sum`, `precipitation_sum`), cached for an hour. It receives only coordinates rounded to 2 decimals. `WEATHER=off` disables it.
+[Open-Meteo](https://open-meteo.com) for daily sunshine and rain (`shortwave_radiation_sum`, `precipitation_sum`), cached for an hour. It receives only coordinates rounded to 2 decimals. `WEATHER=off` disables it. For the optional [daily alert](alerts.md), [ntfy](https://ntfy.sh) and/or the Telegram Bot API, called once a day by Vercel Cron (`vercel.json`) at `/api/cron/daily`.
 
 ## Stack
 
@@ -41,13 +41,15 @@ components/
   charts.tsx              power curve, grid voltage, bar charts, sparkline
   health-card.tsx         system health, cleaning advice, today's estimate, location, export dialog
   inverter-card.tsx       live inverter readings, grid check, alarms, WiFi stick
+  alerts-card.tsx         daily alert status, preview and test
   brand.tsx               logo and footer credit
   ui/…                    Watermelon UI / shadcn primitives
 lib/
   shinemonitor.ts         ShineMonitor client, data shaping, sample data
   inverter.ts             device readings, grid events, alarms, datalogger
   health.ts               health, cleaning and estimate maths; Open-Meteo
-  handlers.ts             shared live/demo handlers for health, inverter, export
+  handlers.ts             shared live/demo handlers for health, inverter, export, alerts
+  alerts.ts               daily alert text and ntfy / Telegram senders
   csv.ts                  CSV writer
   auth.ts                 signed sessions
   guard.ts                per-route session check

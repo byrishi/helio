@@ -98,3 +98,18 @@
 .recharts-wrapper, .recharts-surface { outline: none; }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Helio mark motion. Shape never changes; only how it arrives and breathes. */
+.helio-logo .rays, .helio-logo .core { transform-box: view-box; transform-origin: 16px 16px; }
+.helio-logo .rays { transition: transform .9s cubic-bezier(.2,.7,.2,1); }
+a:hover > * .helio-logo .rays, a:hover > .helio-logo .rays, .helio-logo:hover .rays { transform: rotate(45deg); }
+.helio-logo.intro .core { animation: helio-core .7s cubic-bezier(.2,.8,.3,1.25) both; }
+.helio-logo.intro .ray { stroke-dasharray: 2.6; stroke-dashoffset: 2.6; animation: helio-ray .45s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: calc(var(--i) * 55ms + 220ms); }
+.helio-logo.live .core { animation: helio-breathe 3.6s ease-in-out infinite; }
+.helio-logo.intro.live .core { animation: helio-core .7s cubic-bezier(.2,.8,.3,1.25) both, helio-breathe 3.6s ease-in-out .9s infinite; }
+@keyframes helio-core { from { transform: scale(.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes helio-ray { to { stroke-dashoffset: 0; } }
+@keyframes helio-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(.86); } }
+@media (prefers-reduced-motion: reduce) {
+  .helio-logo .core, .helio-logo .ray, .helio-logo .rays { animation: none !important; transition: none !important; stroke-dashoffset: 0 !important; }
+}

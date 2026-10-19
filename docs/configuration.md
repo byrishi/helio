@@ -25,6 +25,10 @@ Everything is set with environment variables. On Vercel: **Project → Settings 
 | `SYSTEM_KWP` | panels × watts from the datalogger | Panel size in kWp for per-kW figures |
 | `GRID_VOLTAGE` | `230` | Nominal grid voltage for the grid check, e.g. `120`, `220`, `240` |
 | `GRID_FREQUENCY` | `50` | Nominal grid frequency, `50` or `60` |
+| `NTFY_TOPIC` | none | ntfy topic for the [daily alert](alerts.md). `NTFY_SERVER`, `NTFY_TOKEN` for self-hosted or protected topics |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | none | Telegram bot for the daily alert |
+| `CRON_SECRET` | none | Required for the daily alert's schedule. Any long random text |
+| `ALERT_ONLY_ISSUES` | `false` | `true` sends the alert only on days with something to check |
 | `WEATHER` | on | Set to `off` to never call Open-Meteo. Health then compares raw output only |
 | `SHINE_PLANT_ID` | first plant | Only for accounts with several plants: the **API** plant id to show |
 | `NEXT_PUBLIC_BRAND_NAME` | `Rishi Shah` | Name in the footer credit |

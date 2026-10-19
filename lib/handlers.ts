@@ -1,6 +1,7 @@
 // Shared handlers for the signed-in routes (/api/solar/*) and the public demo (/api/demo/*).
 // The demo never touches a real account: every read goes to the mock functions instead.
 import { NextResponse } from "next/server";
+import { buildReport, channels, send } from "@/lib/alerts";
 import { config } from "@/lib/config";
 import { toCsv } from "@/lib/csv";
 import { computeHealth, fetchWeather, type Weather } from "@/lib/health";
@@ -213,6 +214,62 @@ export async function exportCsv(req: Request, demo: boolean) {
       "grid_voltage_min_v", "grid_voltage_max_v", "grid_voltage_max_time", "grid_frequency_min_hz", "grid_frequency_max_hz", "inverter_temp_max_c", "pv_voltage_max_v",
       "output_stops", "over_voltage_events", "value_min", "value_max", "currency", "plant_capacity_kwp"];
     return file(`helio-days-${from}_to_${to}.csv`, toCsv(header, rows));
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+  }
+}
+
+/* ---------- Daily alert ---------- */
+export async function report(demo: boolean) {
+  const o = await overview(demo);
+  const today = ymd(new Date());
+  const loc = locationFor(o, new URLSearchParams(), demo);
+  let weather: Weather[] | null = null;
+  if (demo) weather = mockWeather(o.daily.map((d) => d.date));
+  else if (loc) weather = await fetchWeather(loc.lat, loc.lon, 35, config.timezone).catch(() => null);
+  const h = computeHealth({ days: o.daily, today, capacityKw: kwpOf(o), weather, cleanedOn: null });
+  let day: InverterDay | null = null, live = null, collector = null, alarms: Alarm[] = [];
+  if (demo) { day = mockInverterDay(today); live = mockLive(); collector = mockCollector; }
+  else {
+    const k = await getDeviceKey().catch(() => null);
+    if (k?.key) {
+      [collector, live, day] = await Promise.all([getCollector(k.key.pn, k.collectorStatus).catch(() => null), getLive(k.key).catch(() => null), getDeviceDay(k.key, today).catch(() => null)]);
+      alarms = (await getAlarms(k.key, 2).catch(() => ({ items: [] as Alarm[] }))).items;
+    }
+  }
+  return buildReport({ overview: o, kwp: kwpOf(o), today, timezone: config.timezone, locale: config.locale, health: h, day, live, collector, alarms, limits: GRID });
+}
+
+const dashboardUrl = () => process.env.APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined);
+
+/** GET: what the next alert would say and which channels are set. POST: send it now (a test). */
+export async function alerts(req: Request, demo: boolean) {
+  try {
+    if (req.method === "POST") {
+      if (demo) return NextResponse.json({ error: "The demo can't send alerts. Set one up on your own copy." }, { status: 403 });
+      const ch = channels();
+      if (!ch.telegram && !ch.ntfy) return NextResponse.json({ error: "No alert channel is set. Add NTFY_TOPIC or TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID." }, { status: 400 });
+      const rep = await report(false);
+      return NextResponse.json({ sent: await send({ ...rep, title: `Test: ${rep.title}` }, dashboardUrl()) }, { headers: noStore });
+    }
+    const rep = await report(demo);
+    return NextResponse.json({ channels: demo ? { telegram: false, ntfy: false, cron: false, onlyIssues: false } : channels(), preview: rep }, { headers: noStore });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+  }
+}
+
+/** Called by Vercel Cron once a day. Vercel sends "Authorization: Bearer $CRON_SECRET". */
+export async function cronDaily(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ error: "Set CRON_SECRET to enable the daily alert" }, { status: 503 });
+  if (req.headers.get("authorization") !== `Bearer ${secret}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ch = channels();
+  if (!ch.telegram && !ch.ntfy) return NextResponse.json({ skipped: "no channel configured" });
+  try {
+    const rep = await report(false);
+    if (ch.onlyIssues && !rep.issues.length) return NextResponse.json({ skipped: "nothing to report (ALERT_ONLY_ISSUES)" });
+    return NextResponse.json({ sent: await send(rep, dashboardUrl()) });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }

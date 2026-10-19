@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.0 (2026-10-19)
+
+- **Daily alert** on ntfy or Telegram: today's units, yesterday's health, cleaning advice, grid events, alarms and WiFi stick status. Scheduled with Vercel Cron, protected by `CRON_SECRET`; preview and test from the dashboard
+- The Helio logo animates in, breathes while the system is generating, and turns on hover. Same shape; still under reduced motion
+- "Use this device's location" now works: the security headers allowed no geolocation at all before
+- Narrow phones: the header keeps the plant name readable down to 320 px
+
 ## 2.0.0 (2026-10-19)
 
 - **System health:** each day scored against your own best days, adjusted for sunshine from Open-Meteo; cloudy days aren't scored

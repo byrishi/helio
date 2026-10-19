@@ -1,0 +1,108 @@
+// Daily alert: one short message with today's units and anything that needs a look.
+// Channels: Telegram (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID) and ntfy (NTFY_TOPIC, optional NTFY_SERVER / NTFY_TOKEN).
+import type { Health } from "@/lib/health";
+import type { Alarm, Collector, InverterDay, Live } from "@/lib/inverter";
+import type { Overview } from "@/lib/shinemonitor";
+
+export type ReportInput = {
+  overview: Overview;
+  kwp: number;
+  today: string;               // yyyy-mm-dd, plant time
+  timezone: string;
+  locale: string;
+  health: Health | null;
+  day: InverterDay | null;      // today's inverter rows
+  live: Live | null;
+  collector: Collector | null;
+  alarms: Alarm[];              // recent alarms; today's are reported
+  limits: { highV: number; lowV: number };
+};
+export type Report = { title: string; body: string; issues: string[]; priority: "default" | "high" };
+
+const t12 = (t: string) => { const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
+const f = (n: number, d = 1) => n.toFixed(d);
+
+export function buildReport(r: ReportInput): Report {
+  const o = r.overview, issues: string[] = [], lines: string[] = [];
+  const dateLabel = new Date(r.today + "T12:00:00Z").toLocaleDateString(r.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+  // Units
+  const est = r.health?.today.expectedKwh != null && r.health.today.low != null && r.health.today.high != null
+    ? ` · expected ${f(r.health.today.low, 0)}–${f(r.health.today.high, 0)} for a clean system` : "";
+  lines.push(`${f(o.todayKwh)} kWh today${r.kwp ? ` (${f(o.todayKwh / r.kwp, 2)} kWh/kWp)` : ""}${est}`);
+  if (o.yesterdayKwh) lines.push(`Yesterday ${f(o.yesterdayKwh)} kWh · this month ${f(o.monthKwh, 0)} kWh`);
+
+  // WiFi stick and inverter state
+  if (r.collector && !r.collector.online) issues.push("WiFi stick is offline, so no new data is reaching ShineMonitor. Check its NET light and your 2.4 GHz WiFi.");
+  if (r.live?.status && !/normal|generat|run|on.?grid|standby|wait/i.test(r.live.status)) issues.push(`Inverter status: ${r.live.status}.`);
+  if (o.todayKwh === 0 && r.health?.today.forecastIrradiation && r.health.today.forecastIrradiation >= 1.5) issues.push("No units recorded today, though it was forecast to be sunny.");
+
+  // Health and cleaning
+  const latest = r.health?.latest;
+  if (latest && latest.score !== null && (latest.status === "low" || latest.status === "slightly-low")) {
+    const msg = `Yesterday was ${latest.status === "low" ? "low" : "slightly low"}: ${f(latest.score * 100, 0)}% of a good day for its sunshine.`;
+    (latest.status === "low" ? issues : lines).push(msg);
+  } else if (latest?.status === "good" && latest.score !== null) lines.push(`Yesterday: good (${f(latest.score * 100, 0)}% of a good day).`);
+  const s = r.health?.soiling;
+  if (s?.advice === "clean" && s.lossPct !== null) issues.push(`Cleaning recommended: recent sunny days are about ${f(s.lossPct * 100, 0)}% below ${s.reference === "after-wash" ? "how the panels did after the last rain or cleaning" : "your best days"}.`);
+  else if (s?.advice === "watch" && s.lossPct !== null) lines.push(`Dust may be building (about ${f(s.lossPct * 100, 0)}% below). No need to clean yet.`);
+
+  // Grid
+  for (const e of r.day?.events ?? []) {
+    const when = `${t12(e.t)}${e.until ? `–${t12(e.until)}` : ""}`;
+    if (e.kind === "stopped") issues.push(`Output stopped ${when}. ${e.detail}`);
+    else if (e.kind === "over-voltage") issues.push(`High grid voltage ${when}. ${e.detail}`);
+    else if (e.kind === "under-voltage") issues.push(`Low grid voltage ${when}. ${e.detail}`);
+    else issues.push(`Grid frequency out of range ${when}. ${e.detail}`);
+  }
+  if (r.day?.grid.max && r.day.grid.min && !(r.day.events ?? []).some((e) => e.kind !== "stopped")) lines.push(`Grid ${f(r.day.grid.min!.v, 0)}–${f(r.day.grid.max.v, 0)} V, within limits.`);
+
+  // Alarms raised today
+  const todays = r.alarms.filter((a) => a.start.slice(0, 10) === r.today);
+  for (const a of todays.slice(0, 3)) issues.push(`Inverter ${a.level}: ${a.desc}${a.code ? ` (${a.code})` : ""} at ${t12(a.start.slice(11, 16))}${a.cleared ? `, cleared ${t12(a.cleared.slice(11, 16))}` : ", not cleared"}.`);
+  if (todays.length > 3) issues.push(`${todays.length - 3} more inverter alarms today.`);
+
+  const name = o.plant.name || "Helio";
+  const title = `${name}: ${f(o.todayKwh)} kWh today${issues.length ? ` · ${issues.length} to check` : ""}`;
+  const body = [`${name} · ${dateLabel}`, "", ...lines, ...(issues.length ? ["", "Needs a look:", ...issues.map((i) => `• ${i}`)] : ["", "Nothing needs a look today."])].join("\n");
+  const urgent = issues.some((i) => /offline|stopped|No units|fault|error/i.test(i));
+  return { title, body, issues, priority: urgent ? "high" : "default" };
+}
+
+export function channels() {
+  return {
+    telegram: !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
+    ntfy: !!process.env.NTFY_TOPIC,
+    cron: !!process.env.CRON_SECRET,
+    onlyIssues: /^(1|true|yes|on)$/i.test(process.env.ALERT_ONLY_ISSUES ?? ""),
+  };
+}
+
+/** Send to every configured channel. Returns one result per channel. */
+export async function send(rep: Report, dashboardUrl?: string): Promise<{ channel: string; ok: boolean; error?: string }[]> {
+  const out: { channel: string; ok: boolean; error?: string }[] = [];
+  const text = dashboardUrl ? `${rep.body}\n\n${dashboardUrl}` : rep.body;
+  if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text: `${rep.title}\n\n${text}`, disable_web_page_preview: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      out.push(r.ok && j.ok ? { channel: "telegram", ok: true } : { channel: "telegram", ok: false, error: j.description || `HTTP ${r.status}` });
+    } catch (e) { out.push({ channel: "telegram", ok: false, error: (e as Error).message }); }
+  }
+  if (process.env.NTFY_TOPIC) {
+    try {
+      const server = (process.env.NTFY_SERVER || "https://ntfy.sh").replace(/\/$/, "");
+      // HTTP headers must be plain ASCII, so the title is simplified; the body keeps full text.
+      const title = rep.title.replace(/[·–—]/g, "-").replace(/[^\x20-\x7e]/g, "").trim() || "Helio";
+      const headers: Record<string, string> = { Title: title, Priority: rep.priority === "high" ? "high" : "default", Tags: rep.issues.length ? "warning" : "sunny" };
+      if (dashboardUrl) headers.Click = dashboardUrl;
+      if (process.env.NTFY_TOKEN) headers.Authorization = `Bearer ${process.env.NTFY_TOKEN}`;
+      const r = await fetch(`${server}/${encodeURIComponent(process.env.NTFY_TOPIC)}`, { method: "POST", headers, body: rep.body });
+      out.push(r.ok ? { channel: "ntfy", ok: true } : { channel: "ntfy", ok: false, error: `HTTP ${r.status}` });
+    } catch (e) { out.push({ channel: "ntfy", ok: false, error: (e as Error).message }); }
+  }
+  return out;
+}

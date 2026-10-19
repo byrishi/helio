@@ -2,13 +2,23 @@
 const NAME = process.env.NEXT_PUBLIC_BRAND_NAME || "Rishi Shah";
 const URL = process.env.NEXT_PUBLIC_BRAND_URL || "https://rishishah.in";
 
-export function Logo({ size = 32 }: { size?: number }) {
+/** The Helio mark. `animate` plays a one-time intro (rays draw out from the sun); `live` adds a slow
+ *  breathing glow while the system is generating. Hovering a link that contains it turns the rays.
+ *  The shape is identical to the static logo, and all motion stops under prefers-reduced-motion. */
+export function Logo({ size = 32, animate = false, live = false }: { size?: number; animate?: boolean; live?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className={`helio-logo shrink-0${animate ? " intro" : ""}${live ? " live" : ""}`}>
       <rect width="32" height="32" rx="9" fill="#ff5e1f" />
-      <circle cx="16" cy="16" r="5" fill="#fff" />
-      <g stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
-        <path d="M16 5.5v2.4M16 24.1v2.4M5.5 16h2.4M24.1 16h2.4M8.6 8.6l1.7 1.7M21.7 21.7l1.7 1.7M8.6 23.4l1.7-1.7M21.7 10.3l1.7-1.7" />
+      <circle className="core" cx="16" cy="16" r="5" fill="#fff" />
+      <g className="rays" stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
+        <path className="ray" style={{ ["--i" as string]: 0 }} d="M16 5.5v2.4" />
+        <path className="ray" style={{ ["--i" as string]: 1 }} d="M21.7 10.3l1.7-1.7" />
+        <path className="ray" style={{ ["--i" as string]: 2 }} d="M24.1 16h2.4" />
+        <path className="ray" style={{ ["--i" as string]: 3 }} d="M21.7 21.7l1.7 1.7" />
+        <path className="ray" style={{ ["--i" as string]: 4 }} d="M16 24.1v2.4" />
+        <path className="ray" style={{ ["--i" as string]: 5 }} d="M8.6 23.4l1.7-1.7" />
+        <path className="ray" style={{ ["--i" as string]: 6 }} d="M5.5 16h2.4" />
+        <path className="ray" style={{ ["--i" as string]: 7 }} d="M8.6 8.6l1.7 1.7" />
       </g>
     </svg>
   );

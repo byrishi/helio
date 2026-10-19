@@ -28,7 +28,7 @@ export default function Login() {
       <aside className="relative hidden overflow-hidden bg-[#141414] p-10 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="pointer-events-none absolute -right-40 -top-40 size-[560px] rounded-full bg-[radial-gradient(closest-side,rgba(255,94,31,0.35),transparent)]" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_70%)]" />
-        <div className="relative flex items-center gap-3"><Logo /><span className="font-medium">Helio</span></div>
+        <div className="relative flex items-center gap-3"><Logo animate /><span className="font-medium">Helio</span></div>
         <div className="relative max-w-md">
           <h2 className="text-4xl font-medium leading-[1.1] tracking-tight">Every unit your roof makes, counted.</h2>
           <p className="mt-4 text-[15px] leading-relaxed text-white/60">Straight from the inverter&apos;s energy counter, refreshed every five minutes. Today, yesterday, any day.</p>
@@ -38,7 +38,7 @@ export default function Login() {
 
       {/* Form */}
       <main className="flex flex-col px-6 py-8 sm:px-10">
-        <div className="flex items-center gap-3 lg:hidden"><Logo /><span className="font-medium">Helio</span></div>
+        <div className="flex items-center gap-3 lg:hidden"><Logo animate /><span className="font-medium">Helio</span></div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
           <h1 className="text-3xl font-medium tracking-tight">Sign in</h1>
           <p className="mt-2 text-sm text-muted-foreground">Enter your details to view the dashboard.</p>

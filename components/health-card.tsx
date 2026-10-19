@@ -243,7 +243,7 @@ export function ExportButton({ api = "/api/solar", rates }: { api?: string; rate
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <Button variant="outline" size="sm" aria-label="Export data"><Download /><span className="hidden sm:inline">Export</span></Button>
+        <Button variant="outline" size="sm" aria-label="Export data" className="max-sm:px-2"><Download /><span className="hidden sm:inline">Export</span></Button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=open]:fade-in-0" />

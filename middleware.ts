@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE, verifySession } from "@/lib/auth";
 
 // Anyone can open the demo (sample data only). Everything else needs a session.
-const PUBLIC = [/^\/demo(\/|$)/, /^\/api\/demo(\/|$)/];
+// /api/cron/* checks CRON_SECRET itself.
+const PUBLIC = [/^\/demo(\/|$)/, /^\/api\/demo(\/|$)/, /^\/api\/cron\//];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

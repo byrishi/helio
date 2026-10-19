@@ -7,6 +7,7 @@
 | [ShineMonitor account](shinemonitor-account.md) | Registering, adding your plant, fixing the plant settings |
 | [Configuration](configuration.md) | Every environment variable, custom domain, sharing, updating |
 | [Accuracy and savings](accuracy-and-savings.md) | Where each number comes from and how money values are worked out |
+| [Daily alert](alerts.md) | The evening message on ntfy or Telegram: what it says and how to set it up |
 | [Health and inverter checks](health-and-inverter.md) | How health, cleaning advice, today's estimate, grid checks, alarms and CSV export work |
 | [Limitations](limitations.md) | What Helio can't do, honestly |
 | [Security](security.md) | What's protected, how, and the known gaps |
