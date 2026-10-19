@@ -11,26 +11,43 @@ Then tap **Send a test alert**. That's it: the daily schedule is already in `ver
 
 ## What it says
 
+The same sections in the same order every day, so you can read it at a glance. Lines only appear when there's data for them.
+
 ```
-My Rooftop: 21.4 kWh today · 1 to check
+☀️ My Rooftop · Mon, 19 Oct
+21.4 kWh today · ⚠️ 1 thing to check
 
-My Rooftop · Mon, 19 Oct
+Generation
+• 3.96 kWh per kWp of panels
+• Expected 21–23 kWh for clean panels in today's sunshine
+• Yesterday 22.0 kWh, today 3% lower
+• This month 401 kWh so far
 
-21.4 kWh today (3.96 kWh/kWp) · expected 21–23 for a clean system
-Yesterday 22.0 kWh · this month 401 kWh
-Yesterday: good (96% of a good day).
+Health
+• Yesterday was good: 96% of a good day for its sunshine
+• Panels: looking clean, within 3% of how they did after the last rain or cleaning
 
-Needs a look:
-• High grid voltage 11:05 am–1:40 pm. Peaked at 258.6 V, above 253 V (230 V + 10%). The inverter kept running, so its trip setting is above this.
+Grid
+• Voltage 236–259 V, highest at 12:40 pm (standard limit 253 V)
+• Above the limit 2 times, about 1 h 50 min in all; longest 11:05 am–12:45 pm. Inverter kept running
+• Frequency 49.91–50.08 Hz, normal
+
+System
+• Inverter: Normal, hottest 61 °C at 1:20 pm
+• WiFi stick: reported until 6:05 pm, every 5 min
+• Alarms today: none
+
+To check
+• Grid voltage was above 253 V for about 1 h 50 min (peak 259 V). Ask your electricity company to check the supply voltage.
 ```
 
-It lists, when they happen:
+**To check** lists only things you can act on:
 
-- the WiFi stick going offline, or no units on a sunny day
-- the inverter reporting a status other than normal
-- yesterday scoring **low** for its sunshine, and **cleaning recommended**
-- high or low grid voltage, grid frequency out of range, and output stops, grouped with their times
-- inverter alarms raised today
+- data stopping during the day, or no data at all (the WiFi stick going quiet after sunset is normal and isn't flagged)
+- no units on a sunny day, or yesterday scoring **low** for its sunshine
+- **cleaning recommended**
+- grid voltage above or below the standard range, frequency out of range, output stops and likely trips
+- the inverter reporting a status other than normal, and inverter alarms raised today
 
 These are the same checks as on the dashboard. See [Health and inverter checks](health-and-inverter.md).
 
