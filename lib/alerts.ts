@@ -47,13 +47,21 @@ export function buildReport(r: ReportInput): Report {
   if (s?.advice === "clean" && s.lossPct !== null) issues.push(`Cleaning recommended: recent sunny days are about ${f(s.lossPct * 100, 0)}% below ${s.reference === "after-wash" ? "how the panels did after the last rain or cleaning" : "your best days"}.`);
   else if (s?.advice === "watch" && s.lossPct !== null) lines.push(`Dust may be building (about ${f(s.lossPct * 100, 0)}% below). No need to clean yet.`);
 
-  // Grid
-  for (const e of r.day?.events ?? []) {
-    const when = `${t12(e.t)}${e.until ? `–${t12(e.until)}` : ""}`;
-    if (e.kind === "stopped") issues.push(`Output stopped ${when}. ${e.detail}`);
-    else if (e.kind === "over-voltage") issues.push(`High grid voltage ${when}. ${e.detail}`);
-    else if (e.kind === "under-voltage") issues.push(`Low grid voltage ${when}. ${e.detail}`);
-    else issues.push(`Grid frequency out of range ${when}. ${e.detail}`);
+  // Grid: one line per kind of event, so a day of high voltage doesn't become a wall of bullets.
+  const events = r.day?.events ?? [];
+  const label = { stopped: "Output stopped", "over-voltage": "High grid voltage", "under-voltage": "Low grid voltage", frequency: "Grid frequency out of range" } as const;
+  for (const kind of ["stopped", "over-voltage", "under-voltage", "frequency"] as const) {
+    const list = events.filter((e) => e.kind === kind);
+    if (!list.length) continue;
+    const span = (e: (typeof list)[0]) => `${t12(e.t)}${e.until ? `–${t12(e.until)}` : ""}`;
+    if (list.length === 1) { issues.push(`${label[kind]} ${span(list[0])}. ${list[0].detail}`); continue; }
+    const times = list.map(span).join(", ");
+    if (kind === "over-voltage" && r.day?.grid.max) {
+      const ran = list.every((e) => /kept running/.test(e.detail));
+      issues.push(`High grid voltage ${list.length} times (${times}), peaking at ${f(r.day.grid.max.v)} V at ${t12(r.day.grid.max.t)}, above ${r.limits.highV} V.${ran ? " The inverter kept running each time." : ""}`);
+    } else if (kind === "under-voltage" && r.day?.grid.min) {
+      issues.push(`Low grid voltage ${list.length} times (${times}), lowest ${f(r.day.grid.min.v)} V, below ${r.limits.lowV} V.`);
+    } else issues.push(`${label[kind]} ${list.length} times: ${times}.`);
   }
   if (r.day?.grid.max && r.day.grid.min && !(r.day.events ?? []).some((e) => e.kind !== "stopped")) lines.push(`Grid ${f(r.day.grid.min!.v, 0)}–${f(r.day.grid.max.v, 0)} V, within limits.`);
 
