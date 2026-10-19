@@ -16,6 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PowerChart, Sparkline, UnitsChart, fmt } from "@/components/charts";
 import { Logo, Signature } from "@/components/brand";
 import { cn } from "@/lib/utils";
+import { ExportButton, HealthCard, STATUS, configureHealth, useHealth } from "@/components/health-card";
+import { InverterCard, configureInverter } from "@/components/inverter-card";
 
 type Data = Overview & { settings: Settings };
 
@@ -27,9 +29,17 @@ let LOC = "en-IN";
 const inr = (n: number) => CUR + (Math.abs(n) < 100 && n % 1 !== 0 ? n.toLocaleString(LOC, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(n).toLocaleString(LOC));
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const todayIST = () => new Date().toLocaleDateString("en-CA", { timeZone: TZ });
-const shiftDate = (d: string, n: number) => new Date(new Date(d + "T12:00:00+05:30").getTime() + n * 86400000).toLocaleDateString("en-CA", { timeZone: TZ });
+// Dates are plain calendar days (yyyy-mm-dd), so shift and format them in UTC to keep the day fixed.
+const shiftDate = (d: string, n: number) => new Date(Date.parse(d + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 const niceDate = (d: string, opts: Intl.DateTimeFormatOptions = {}) =>
-  new Date(d + "T12:00:00+05:30").toLocaleDateString(LOC, { weekday: "short", day: "numeric", month: "short", timeZone: TZ, ...opts });
+  new Date(d + "T12:00:00Z").toLocaleDateString(LOC, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC", ...opts });
+// "yyyy-mm-dd hh:mm" in the plant's time zone → epoch ms.
+const plantTimeMs = (ts: string) => {
+  const naive = Date.parse(ts.replace(" ", "T") + (ts.length <= 16 ? ":00Z" : "Z"));
+  const at = new Date(naive);
+  const offset = new Date(at.toLocaleString("en-US", { timeZone: TZ })).getTime() - new Date(at.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+  return naive - offset;
+};
 const t12 = (t?: string | null) => {
   if (!t) return "—";
   const [h, m] = t.split(":").map(Number);
@@ -53,12 +63,13 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
   const [day, setDay] = useState<DayDetail | null>(null);
   const [dayLoading, setDayLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const { health, error: healthErr, cleanedOn, markCleaned, saveLoc } = useHealth(api);
   const ratesKey = mode === "demo" ? "helio.demo.rates" : "helio.rates";
   const [rates, setRates] = useState<Rates | null>(null);
   useEffect(() => { setRates(readRates(ratesKey)); }, [ratesKey]);
   const saveRates = (r: Rates | null) => { setRates(r); try { r ? localStorage.setItem(ratesKey, JSON.stringify(r)) : localStorage.removeItem(ratesKey); } catch {} };
 
-  const loadOverview = useCallback(() => getJSON<Data>(api).then((d) => { TZ = d.settings.timezone; CUR = d.settings.currency; LOC = d.settings.locale; setData(d); setErr(null); }).catch((e) => setErr(e.message)), [api]);
+  const loadOverview = useCallback(() => getJSON<Data>(api).then((d) => { TZ = d.settings.timezone; CUR = d.settings.currency; LOC = d.settings.locale; configureHealth(d.settings); configureInverter(d.settings); setData(d); setErr(null); }).catch((e) => setErr(e.message)), [api]);
   const loadDay = useCallback((d: string) => {
     setDayLoading(true);
     return getJSON<DayDetail>(`${api}/day?date=${d}`).then(setDay).catch((e) => setErr(e.message)).finally(() => setDayLoading(false));
@@ -81,7 +92,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
     const past = data.daily.filter((d) => d.date !== today && d.kwh > 0);
     const avg = past.length ? past.reduce((s, d) => s + d.kwh, 0) / past.length : 0;
     const best = past.reduce((m, d) => (d.kwh > m.kwh ? d : m), { date: "", kwh: 0 });
-    const minutesSince = data.lastReadingAt ? (Date.now() - new Date(data.lastReadingAt.replace(" ", "T") + ":00+05:30").getTime()) / 60000 : Infinity;
+    const minutesSince = data.lastReadingAt ? (Date.now() - plantTimeMs(data.lastReadingAt)) / 60000 : Infinity;
     const hour = Number(new Date().toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false }));
     const daylight = hour >= 7 && hour < 18;
     const status: "live" | "warn" | "idle" = data.nowKw > 0 && minutesSince < 20 ? "live" : daylight && minutesSince > 30 ? "warn" : "idle";
@@ -102,17 +113,19 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
   // Rates set on this device win over the server defaults, so anyone can use their own tariff and currency.
   const set: Settings = { ...data.settings, ...(rates ?? {}) };
   CUR = set.currency;
-  const cap = data.plant.capacityKw;
+  const cap = data.plant.panelKwp || data.plant.capacityKw;
+  const hByDate = new Map((health?.days ?? []).map((h) => [h.date, h]));
   const diff = data.yesterdayKwh ? ((data.todayKwh - data.yesterdayKwh) / data.yesterdayKwh) * 100 : null;
   const isToday = date === todayIST();
   const last7 = data.daily.slice(-7).map((d) => d.kwh);
   const pct = cap ? Math.min(100, (data.nowKw / cap) * 100) : 0;
   const rows = [...data.daily].reverse();
   const maxDay = Math.max(1, ...data.daily.map((d) => d.kwh));
-  const since = data.plant.installed ? new Date(data.plant.installed.slice(0, 10) + "T00:00:00+05:30").toLocaleDateString(LOC, { month: "short", year: "numeric" }) : null;
+  const since = data.plant.installed ? new Date(data.plant.installed.slice(0, 10) + "T12:00:00Z").toLocaleDateString(LOC, { month: "short", year: "numeric", timeZone: "UTC" }) : null;
 
   return (
-    <Shell mode={mode} name={data.plant.name} meta={cap ? `${fmt(cap, 2)} kW` : undefined} status={stats.status} onLogout={logout}>
+    <Shell mode={mode} name={data.plant.name} meta={cap ? `${fmt(cap, 2)} kWp` : undefined} status={stats.status} onLogout={logout}
+      exportButton={<ExportButton api={api} rates={{ tariff: set.tariff, exportTariff: set.exportTariff, currency: set.currency }} />}>
       {err && <ErrorBanner msg={`Last refresh failed: ${err}. Showing the most recent data.`} />}
 
       <div className="mb-8">
@@ -140,7 +153,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
           footer={
             <div>
               <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${pct}%` }} /></div>
-              <div className="mt-2 text-xs text-muted-foreground">{cap ? `${fmt(pct, 0)}% of ${fmt(cap, 2)} kW capacity` : "Current output"}</div>
+              <div className="mt-2 text-xs text-muted-foreground">{cap ? `${fmt(pct, 0)}% of ${fmt(cap, 2)} kWp of panels` : "Current output"}</div>
             </div>
           } />
         <Kpi icon={CalendarDays} label={`This month · ${MONTHS[Number(todayIST().slice(5, 7)) - 1]}`} value={fmt(data.monthKwh, 0)} unit="kWh"
@@ -202,6 +215,14 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
         </Tabs>
       </Card>
 
+      <div className="mt-4">
+        <HealthCard h={health} error={healthErr} cleanedOn={cleanedOn} onCleaned={markCleaned} todayKwh={data.todayKwh} onLocation={saveLoc} />
+      </div>
+
+      <div className="mt-4">
+        <InverterCard api={api} date={date} dateLabel={isToday ? "today" : niceDate(date)} />
+      </div>
+
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="gap-0 py-0 lg:col-span-2">
           <CardHeader className="border-b px-5 py-4 sm:px-6 [.border-b]:pb-4">
@@ -215,17 +236,24 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
                   <TableHead>Date</TableHead>
                   <TableHead className="hidden w-[40%] sm:table-cell" />
                   <TableHead className="text-right">Units</TableHead>
+                  <TableHead className="hidden text-right md:table-cell">kWh/kWp</TableHead>
                   <TableHead className="text-right">Worth</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.slice(0, showAll ? 30 : 10).map((d) => (
                   <TableRow key={d.date} onClick={() => openDay(d.date)} className={cn("cursor-pointer", d.date === date && "bg-primary/[0.06] hover:bg-primary/10")}>
-                    <TableCell className="font-medium">{d.date === todayIST() ? "Today" : niceDate(d.date)}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="inline-flex items-center gap-2">
+                        {(() => { const h = hByDate.get(d.date); return <span title={h ? STATUS[h.status].label : ""} className={cn("size-1.5 shrink-0 rounded-full", h ? STATUS[h.status].dot : "bg-transparent")} />; })()}
+                        {d.date === todayIST() ? "Today" : niceDate(d.date)}
+                      </span>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary/80" style={{ width: `${(d.kwh / maxDay) * 100}%` }} /></div>
                     </TableCell>
                     <TableCell className="text-right font-mono tabular">{fmt(d.kwh)}</TableCell>
+                    <TableCell className="hidden text-right font-mono tabular text-muted-foreground md:table-cell">{cap ? fmt(d.kwh / cap, 2) : "—"}</TableCell>
                     <TableCell className="text-right font-mono tabular text-muted-foreground">{inr(d.kwh * set.tariff)}</TableCell>
                   </TableRow>
                 ))}
@@ -241,7 +269,7 @@ export function Dashboard({ mode = "live" }: { mode?: "live" | "demo" }) {
   );
 }
 
-function Shell({ children, mode, name = "Helio", meta, status, onLogout }: { children: React.ReactNode; mode: "live" | "demo"; name?: string; meta?: string; status?: "live" | "warn" | "idle"; onLogout: () => void }) {
+function Shell({ children, mode, name = "Helio", meta, status, onLogout, exportButton }: { children: React.ReactNode; mode: "live" | "demo"; name?: string; meta?: string; status?: "live" | "warn" | "idle"; onLogout: () => void; exportButton?: React.ReactNode }) {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b bg-card/80 backdrop-blur-md">
@@ -252,10 +280,11 @@ function Shell({ children, mode, name = "Helio", meta, status, onLogout }: { chi
             {meta && <><Separator orientation="vertical" className="hidden h-5 sm:block" /><span className="hidden text-sm text-muted-foreground sm:inline">{meta}</span></>}
           </div>
           <div className="flex items-center gap-2">
-            {status && <StatusBadge status={status} />}
+            {status && <StatusBadge status={status} compact={mode === "demo"} />}
+            {exportButton}
             <ThemeToggle />
             {mode === "demo"
-              ? <Button asChild size="sm"><a href={REPO_URL} target="_blank" rel="noopener">Get your own</a></Button>
+              ? <Button asChild size="sm"><a href={REPO_URL} target="_blank" rel="noopener"><span className="sm:hidden">Get it</span><span className="hidden sm:inline">Get your own</span></a></Button>
               : <Button variant="outline" size="sm" onClick={onLogout}><LogOut /><span className="hidden sm:inline">Sign out</span></Button>}
           </div>
         </div>
@@ -280,14 +309,14 @@ function Shell({ children, mode, name = "Helio", meta, status, onLogout }: { chi
   );
 }
 
-function StatusBadge({ status }: { status: "live" | "warn" | "idle" }) {
+function StatusBadge({ status, compact }: { status: "live" | "warn" | "idle"; compact?: boolean }) {
   const map = {
     live: { text: "Generating", dot: "bg-success" },
     warn: { text: "No recent data", dot: "bg-destructive" },
     idle: { text: "Idle", dot: "bg-muted-foreground" },
   }[status];
   return (
-    <Badge variant="outline" className="h-8 gap-2 px-3 font-normal text-muted-foreground">
+    <Badge variant="outline" className={cn("hidden h-8 gap-2 px-3 font-normal text-muted-foreground", compact ? "sm:inline-flex" : "min-[360px]:inline-flex")}>
       <span className={cn("size-1.5 rounded-full", map.dot, status === "live" && "animate-pulse")} />
       <span className="hidden sm:inline">{map.text}</span>
     </Badge>

@@ -11,6 +11,9 @@ export const config = {
   /** Currency symbol and number locale for display */
   currency: process.env.CURRENCY || "₹",
   locale: process.env.LOCALE || "en-IN",
+  /** Nominal grid voltage and frequency, for the grid check (230 V / 50 Hz in India and most of Europe) */
+  gridVoltage: num(process.env.GRID_VOLTAGE, 230),
+  gridFrequency: num(process.env.GRID_FREQUENCY, 50),
 };
 
 export type Settings = Pick<typeof config, "timezone" | "tariff" | "exportTariff" | "currency" | "locale">;

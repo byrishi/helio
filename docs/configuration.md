@@ -21,6 +21,11 @@ Everything is set with environment variables. On Vercel: **Project → Settings 
 | `CURRENCY` | `₹` | Currency symbol, e.g. `$`, `€`, `£` |
 | `LOCALE` | `en-IN` | Number and date formatting, e.g. `en-US`, `de-DE` |
 | `TIMEZONE` | `Asia/Kolkata` | IANA timezone of your plant, e.g. `Europe/Berlin` |
+| `SITE_LAT` / `SITE_LON` | plant's saved location | Your roof's coordinates for weather-based health checks, e.g. `28.6139` / `77.2090`. Only needed if your ShineMonitor plant has no location, or to be more exact |
+| `SYSTEM_KWP` | panels × watts from the datalogger | Panel size in kWp for per-kW figures |
+| `GRID_VOLTAGE` | `230` | Nominal grid voltage for the grid check, e.g. `120`, `220`, `240` |
+| `GRID_FREQUENCY` | `50` | Nominal grid frequency, `50` or `60` |
+| `WEATHER` | on | Set to `off` to never call Open-Meteo. Health then compares raw output only |
 | `SHINE_PLANT_ID` | first plant | Only for accounts with several plants: the **API** plant id to show |
 | `NEXT_PUBLIC_BRAND_NAME` | `Rishi Shah` | Name in the footer credit |
 | `NEXT_PUBLIC_BRAND_URL` | `https://rishishah.in` | Link for the footer credit |

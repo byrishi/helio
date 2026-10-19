@@ -56,6 +56,12 @@ async function call(params: Record<string, string | number>, retry = true): Prom
   }
 }
 
+/** Raw signed call, for the diagnostics route. Errors come back as values, not throws. */
+export async function rawCall(params: Record<string, string | number>) {
+  try { return { ok: true as const, dat: await call(params) }; }
+  catch (e) { return { ok: false as const, error: (e as Error).message }; }
+}
+
 const num = (v: unknown) => (v == null || v === "" ? 0 : Number(v));
 
 // Resolve the plant from the account itself (cached per server instance).
@@ -74,7 +80,8 @@ export async function getPlantId(): Promise<number> {
 
 const TZ = process.env.TIMEZONE || "Asia/Kolkata";
 export const ymd = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: TZ }); // yyyy-mm-dd
-const shift = (date: string, days: number) => ymd(new Date(new Date(date + "T12:00:00+05:30").getTime() + days * 86400000));
+// Pure calendar arithmetic on yyyy-mm-dd, independent of the server and plant time zones.
+const shift = (date: string, days: number) => new Date(Date.parse(date + "T12:00:00Z") + days * 86400000).toISOString().slice(0, 10);
 
 // "No record" (0x000C) just means the inverter hasn't reported for that period yet
 async function safe<T>(p: Promise<T>, fallback: T): Promise<T> {
@@ -85,7 +92,8 @@ export type Point = { t: string; kw: number };
 export type DayUnits = { date: string; kwh: number };
 
 export type Overview = {
-  plant: { id: number; name: string; capacityKw: number; installed: string | null };
+  plant: { id: number; name: string; capacityKw: number; installed: string | null; panelKwp?: number | null; panels?: { count: number; watt: number } | null };
+  location: { lat: number; lon: number; source: "plant" | "settings" } | null; // for weather-based health
   nowKw: number;
   todayKwh: number;
   yesterdayKwh: number;
@@ -159,6 +167,7 @@ export async function getOverview(): Promise<Overview> {
   const pts = curveOf(curve, today);
   return {
     plant: { id: plantid, name: info?.name || "Home Solar", capacityKw: capKw(info?.nominalPower), installed: info?.install ?? null },
+    location: locationOf(info),
     nowKw: num(power.outputPower),
     todayKwh,
     yesterdayKwh: byDate.get(yesterday) ?? 0,
@@ -172,6 +181,16 @@ export async function getOverview(): Promise<Overview> {
   };
 }
 
+// Site coordinates, most specific first: SITE_LAT / SITE_LON if you set them, otherwise the location
+// saved on your ShineMonitor plant (most installers fill it in), otherwise none.
+export const validLatLon = (a: number, b: number) => Number.isFinite(a) && Number.isFinite(b) && !(a === 0 && b === 0) && Math.abs(a) <= 90 && Math.abs(b) <= 180;
+function locationOf(info: any): Overview["location"] {
+  const ea = Number(process.env.SITE_LAT), eo = Number(process.env.SITE_LON);
+  if (process.env.SITE_LAT && process.env.SITE_LON && validLatLon(ea, eo)) return { lat: ea, lon: eo, source: "settings" };
+  const pa = Number(info?.address?.lat ?? info?.lat), po = Number(info?.address?.lon ?? info?.lon);
+  return validLatLon(pa, po) ? { lat: pa, lon: po, source: "plant" } : null;
+}
+
 export async function getDay(date: string): Promise<DayDetail> {
   const plantid = await getPlantId();
   const [e, c] = await Promise.all([
@@ -181,21 +200,56 @@ export async function getDay(date: string): Promise<DayDetail> {
   return dayFrom(date, num(e.energy), curveOf(c, date));
 }
 
+/** Daily units for one month (yyyy-mm) from the inverter's day counters. */
+export async function getMonthDays(month: string): Promise<DayUnits[]> {
+  const plantid = await getPlantId();
+  const dat = await call({ action: "queryPlantEnergyMonthPerDay", plantid, date: month });
+  return (dat?.perday ?? []).map((p: any) => ({ date: String(p.ts).slice(0, 10), kwh: num(p.val) }));
+}
+
+/** Monthly units for one year (yyyy). */
+export async function getYearMonths(year: string): Promise<{ m: number; kwh: number }[]> {
+  const out = Array.from({ length: 12 }, (_, i) => ({ m: i + 1, kwh: 0 }));
+  const plantid = await getPlantId();
+  const dat = await call({ action: "queryPlantEnergyYearPerMonth", plantid, date: year });
+  for (const p of dat?.permonth ?? []) { const m = Number(String(p.ts).slice(5, 7)); if (m) out[m - 1].kwh = num(p.val); }
+  return out;
+}
+
+export function mockMonthDays(month: string): DayUnits[] {
+  const today = ymd(new Date()); const out: DayUnits[] = [];
+  for (let d = month + "-01"; d.startsWith(month) && d <= today; d = shift(d, 1)) out.push({ date: d, kwh: mockDay(d).kwh });
+  return out;
+}
+
+export { shift };
+
+export function mockYearMonths(year: string) {
+  return Array.from({ length: 12 }, (_, i) => ({ m: i + 1, kwh: +mockMonthDays(`${year}-${String(i + 1).padStart(2, "0")}`).reduce((s, d) => s + d.kwh, 0).toFixed(1) }));
+}
+
 function dayFrom(date: string, kwh: number, curve: Point[]): DayDetail {
   const live = curve.filter((p) => p.kw > 0);
   const peak = curve.reduce<Point | null>((m, p) => (!m || p.kw > m.kw ? p : m), null);
   return { date, kwh, curve, peak: peak && peak.kw > 0 ? peak : null, firstAt: live[0]?.t ?? null, lastAt: live[live.length - 1]?.t ?? null };
 }
 
+/** Mock weather that matches the mock curves: the same seeded "cloud" factor drives both. */
+export function mockWeather(dates: string[]) {
+  return dates.map((date) => { const r = seeded(date); const cloud = 0.75 + r() * 0.25; return { date, radiationKwhM2: +(6.4 * cloud).toFixed(2), rainMm: mockDaysSinceWash(date) === 0 ? 14 : 0 }; });
+}
+// Demo soiling: a wash every 21 days, then output drifts down ~0.7% a day as dust builds up.
+const mockDaysSinceWash = (date: string) => Math.floor(Date.parse(date + "T00:00:00Z") / 86_400_000) % 21;
+
 /* ---------- Mock data (SHINE_MOCK=1) for previewing without an account ---------- */
 function seeded(seed: string) { let h = 0; for (const c of seed) h = (h * 31 + c.charCodeAt(0)) | 0; return () => ((h = (h * 1103515245 + 12345) | 0) >>> 0) / 2 ** 32; }
 
 function mockCurve(date: string, upTo?: number): Point[] {
-  const r = seeded(date); const cloud = 0.75 + r() * 0.25; const out: Point[] = [];
+  const r = seeded(date); const cloud = 0.75 + r() * 0.25; const dust = 1 - 0.007 * mockDaysSinceWash(date); const out: Point[] = [];
   for (let m = 6 * 60 + 25; m <= 18 * 60 + 5; m += 5) {
     if (upTo !== undefined && m > upTo) break;
     const x = (m - 12.6 * 60) / 175; const dip = r() < 0.04 ? 0.88 : 1;
-    out.push({ t: `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`, kw: +Math.max(0, 4.95 * cloud * Math.exp(-x * x) * dip * (0.95 + r() * 0.05)).toFixed(3) });
+    out.push({ t: `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`, kw: +Math.max(0, 4.95 * cloud * dust * Math.exp(-x * x) * dip * (0.95 + r() * 0.05)).toFixed(3) });
   }
   return out;
 }
@@ -221,6 +275,7 @@ export function mockOverview(): Overview {
   const yearKwh = months.reduce((s, m) => s + m.kwh, 0);
   return {
     plant: { id: 1, name: "Demo Rooftop", capacityKw: 5.4, installed: "2023-02-14" },
+    location: { lat: 0, lon: 0, source: "settings" }, // demo only; its weather is generated, never fetched
     nowKw: t.curve.at(-1)?.kw ?? 0, todayKwh: t.kwh, yesterdayKwh: daily[28].kwh, monthKwh, yearKwh,
     totalKwh: +(yearKwh + 13480).toFixed(1), daily, months,
     lastReadingAt: t.lastAt ? `${today} ${t.curve.at(-1)!.t}` : null, fetchedAt: new Date().toISOString(),

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.0 (2026-10-19)
+
+- **System health:** each day scored against your own best days, adjusted for sunshine from Open-Meteo; cloudy days aren't scored
+- **Cleaning advice:** compares recent sunny days with output just after the last heavy rain or a recorded cleaning; *I cleaned them today* button
+- **Today's estimate:** expected range for a clean system from the sunshine forecast
+- **Inverter and grid:** live status, PV voltage and current, grid voltage and frequency, temperatures; daily grid check against IEC 61727 limits with output-stop and likely-trip detection
+- **Alarms** from the last 180 days and **WiFi stick** status, interval and firmware
+- **CSV export** (daily up to 366 days, monthly) with labelled units, using the rates shown on screen
+- **Automatic location** from the ShineMonitor plant, with `SITE_LAT` / `SITE_LON` or this device's location as alternatives
+- Per-kW figures use panels × watts from the datalogger (`SYSTEM_KWP` to override); kWh/kWp column in the daily log
+- New settings: `SITE_LAT`, `SITE_LON`, `SYSTEM_KWP`, `GRID_VOLTAGE`, `GRID_FREQUENCY`, `WEATHER`
+- Animated 404 page
+- Fixed: dates could shift by a day for plants far west of India; "last reading" age used India's offset for every time zone; the power chart now fits long summer days
+
 ## 1.1.0 (2026-10-18)
 
 - Edit your electricity rates and currency from the dashboard (What it's worth → Edit rates). Saved per browser, with reset to the env defaults

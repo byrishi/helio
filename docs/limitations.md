@@ -16,7 +16,10 @@ Helio is small on purpose. Here's what it doesn't do, so you know before you set
 - **No history before the stick was online.** Daily and monthly values only exist from the day the stick first connected. Lifetime total is the exception: it comes from the inverter's own counter.
 - **No battery views.** Hybrid and battery systems show generation only, with no state of charge, charge/discharge or backup time.
 - **One plant per deployment.** Several plants means several deployments, each with its own `SHINE_PLANT_ID`.
-- **No exports or alerts yet.** No CSV download, no email or WhatsApp alerts when generation drops.
+- **No alerts yet.** No email, Telegram or WhatsApp message when generation drops. CSV export is built in.
+- **Health checks need history and weather.** About 7 days of data before days are scored, and weather data (from Open-Meteo) to tell cloud from a real problem. Dust, new shade and a failing panel look alike. See [Health and inverter checks](health-and-inverter.md).
+- **Inverter readings vary by model.** Panel voltage, grid voltage, temperatures and alarms come from your inverter through ShineMonitor; anything your model doesn't report isn't shown. Grid limits are the IEC 61727 defaults; your installer may have set others.
+- **Weather history is 92 days.** Older rows in a CSV have no sunshine or rain columns. Grid and temperature columns cover ranges up to 31 days.
 
 ## Accounts and security
 

@@ -37,6 +37,13 @@ The official apps show the right numbers, but they're slow, cluttered and hard t
 - **Any past day** in detail: units, value, peak power and when it hit, producing hours, a 5-minute power curve
 - **History:** the last 30 days with average and best day, every month of the year, and a daily log you can click into
 - **What it's worth** in your currency, with separate rates for units you use and units you export. Rates can be edited right on the dashboard
+- **System health:** each day scored against your own best days, adjusted for how sunny it was, so a cloudy day isn't mistaken for a fault
+- **Cleaning advice:** tells you when dust is likely costing output, measured against how the panels did after the last rain or cleaning
+- **Today's estimate:** the range a clean system should make today, from the sunshine forecast
+- **Inverter and grid:** live panel voltage and current, grid voltage and frequency, temperatures, and a daily grid check with high-voltage trips and output stops
+- **Alarms and WiFi stick:** the inverter's alarm history and whether the datalogger is online
+- **CSV export:** daily and monthly files with clearly labelled units, ready for Excel or Google Sheets
+- **Location is automatic** from your ShineMonitor plant, with a one-tap fallback
 - **Private by default:** a password-protected dashboard; your ShineMonitor login never reaches the browser
 - **Made for phones**, with light and dark themes and nothing to install
 - **Free to run** on Vercel: no database, no server to look after
@@ -48,6 +55,8 @@ The official apps show the right numbers, but they're slow, cluttered and hard t
     <td><img src="docs/images/dashboard-dark.png" alt="Helio dashboard, dark theme" width="420" /></td>
   </tr>
 </table>
+
+<img src="docs/images/health-inverter.png" alt="System health with cleaning advice and today's estimate, and the inverter and grid check with grid voltage chart, WiFi stick status and alarms" width="920" />
 
 ## Will it work for me?
 
@@ -69,7 +78,7 @@ Stick offline? Follow [Connect the WiFi stick](docs/wifi-stick.md). No account y
 
 3. Deploy, open your link, sign in. Today's units should match shinemonitor.com exactly.
 
-Optional: `EXPORT_TARIFF`, `CURRENCY`, `LOCALE`, `TIMEZONE`, and more in [Configuration](docs/configuration.md).
+Optional: `EXPORT_TARIFF`, `CURRENCY`, `LOCALE`, `TIMEZONE`, `SITE_LAT` / `SITE_LON`, `SYSTEM_KWP`, and more in [Configuration](docs/configuration.md). How the health, cleaning and grid checks work: [Health and inverter checks](docs/health-and-inverter.md).
 
 ## Limitations
 
@@ -81,13 +90,15 @@ Helio is deliberately small. Before you set it up, know that:
 - **Money values are a range**, between all-exported and all-used-at-home, because consumption isn't measured.
 - **History starts when your stick first came online.** The lifetime total is the exception.
 - **There's one shared login**, and brute-force lockout is per server instance. Use a strong password.
+- **Health and cleaning checks need about 7 days of history** and work best with weather data. Dust, new shade and a failing panel look alike.
+- **Inverter readings depend on your model.** Fields your inverter doesn't report aren't shown.
 - **5-minute resolution, one plant per deployment, English only.**
 
 Full list: [docs/limitations.md](docs/limitations.md).
 
 ## Security
 
-Signed, `httpOnly` session cookies; every data route checks the session twice; secrets never ship to the browser; strict security headers; `no-store` on data; Next.js 15.5+. Known gaps and how to report issues: [docs/security.md](docs/security.md).
+Signed, `httpOnly` session cookies; every data route checks the session twice; secrets never ship to the browser; strict security headers; `no-store` on data; Next.js 15.5+. No analytics or trackers. Besides ShineMonitor, the only outside service is Open-Meteo for weather, which receives your roof's coordinates rounded to about 1 km (turn it off with `WEATHER=off`). Known gaps and how to report issues: [docs/security.md](docs/security.md).
 
 
 ### Automated checks
@@ -115,6 +126,7 @@ All workflow actions are pinned to exact commits and run with read-only tokens u
 | [ShineMonitor account](docs/shinemonitor-account.md) | [Troubleshooting](docs/troubleshooting.md) |
 | [Limitations](docs/limitations.md) | [API](docs/api.md) |
 | [Security](docs/security.md) | [Architecture](docs/architecture.md) · [FAQ](docs/faq.md) |
+| [Health and inverter checks](docs/health-and-inverter.md) | |
 
 ## Develop
 

@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "typescript": "^5"
   },
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Open-source dashboard for rooftop solar (Eybond / ShineMonitor)",
   "license": "MIT",
   "author": "Rishi Shah (https://rishishah.in)",

@@ -15,7 +15,11 @@ Browser ──HTTPS + session cookie──▶ Helio (Next.js, your Vercel projec
 
 ### ShineMonitor calls used
 
-`auth`, `queryPlants`, `queryPlantInfo`, `queryPlantActiveOuputPowerCurrent`, `queryPlantEnergyDay`, `queryPlantEnergyTotal`, `queryPlantEnergyMonthPerDay`, `queryPlantEnergyYearPerMonth`, `queryPlantActiveOuputPowerOneDay`.
+`auth`, `queryPlants`, `queryPlantInfo`, `queryPlantActiveOuputPowerCurrent`, `queryPlantEnergyDay`, `queryPlantEnergyTotal`, `queryPlantEnergyMonthPerDay`, `queryPlantEnergyYearPerMonth`, `queryPlantActiveOuputPowerOneDay`, `queryPlantDeviceStatus`, `queryCollectorInfo`, `queryDeviceLastData`, `queryDeviceDataOneDayPaging`, `queryDeviceWarning`.
+
+### Other services
+
+[Open-Meteo](https://open-meteo.com) for daily sunshine and rain (`shortwave_radiation_sum`, `precipitation_sum`), cached for an hour. It receives only coordinates rounded to 2 decimals. `WEATHER=off` disables it.
 
 ## Stack
 
@@ -30,14 +34,21 @@ app/
   login/page.tsx          sign-in
   api/solar/…             live data (session required)
   api/demo/…              sample data (public)
+  not-found.tsx           animated 404
   api/auth/…              login / logout
 components/
   dashboard.tsx           the dashboard (live and demo)
-  charts.tsx              power curve, bar charts, sparkline
+  charts.tsx              power curve, grid voltage, bar charts, sparkline
+  health-card.tsx         system health, cleaning advice, today's estimate, location, export dialog
+  inverter-card.tsx       live inverter readings, grid check, alarms, WiFi stick
   brand.tsx               logo and footer credit
   ui/…                    Watermelon UI / shadcn primitives
 lib/
   shinemonitor.ts         ShineMonitor client, data shaping, sample data
+  inverter.ts             device readings, grid events, alarms, datalogger
+  health.ts               health, cleaning and estimate maths; Open-Meteo
+  handlers.ts             shared live/demo handlers for health, inverter, export
+  csv.ts                  CSV writer
   auth.ts                 signed sessions
   guard.ts                per-route session check
   config.ts               every environment-driven setting
